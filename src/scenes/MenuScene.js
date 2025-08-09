@@ -36,6 +36,9 @@ export default class MenuScene extends Phaser.Scene {
         this.muteText.setText(SFX.muted?'🔇':'🔊');
       });
     this._refresh();
+    const bgm = this.sound.get('bgm') || this.sound.add('bgm', { loop: true, volume: 0.25 });
+if (!bgm.isPlaying) bgm.play();
+this.sound.mute = (localStorage.getItem('kr_muted') === '1'); // keep mute in sync
   }
   _button(x,y,w,h,label,cb){
     const bg = this.add.rectangle(x,y,w,h,0x2a334d).setOrigin(0);
