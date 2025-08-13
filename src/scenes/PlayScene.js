@@ -26,7 +26,7 @@ export default class PlayScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
     }).setOrigin(0.5);
 
-    // 🔊/🔇 mute (sync SFX + music)
+    // 🔊/🔇 mute
     this.muteText = this.add.text(width-60, 20, (localStorage.getItem('kr_muted')==='1')?'🔇':'🔊', {fontSize:'28px'})
       .setInteractive({useHandCursor:true})
       .on('pointerdown', () => {
@@ -36,7 +36,7 @@ export default class PlayScene extends Phaser.Scene {
       });
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
-    // On-screen keyboard FIRST (so we can place player above it)
+    // On-screen keyboard FIRST (for layout)
     this.kb = new OnScreenKeyboard(this);
     this.add.existing(this.kb);
     const kbW = this.kb.totalWidth || 460;
@@ -49,35 +49,35 @@ export default class PlayScene extends Phaser.Scene {
     this.kb.x = Math.round((width - kbW * scale) / 2);
     this.kb.y = Math.round(height - (kbH * scale) - margin);
 
-    // Vertical columns (x positions) and player position (near bottom)
+    // Vertical columns (x) + positions
     const centerX = width / 2;
     const colOffset = 160; // spacing between columns
     this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-    this.playerY = this.kb.y - 60; // sit above keyboard
-    this.spawnY = -60;             // start falling from above the screen
+    this.playerY = this.kb.y - 60; // runner above keyboard
+    this.spawnY  = -60;            // start above the screen
+    this.bottomY = height + 40;    // slide off-screen at the bottom
 
-    // Column guides
+    // Column guides (no more ladder rungs 👍)
     this.colsX.forEach(x=>{
-      // faint guide line
       this.add.rectangle(x, 140, 4, Math.max(0, this.playerY - 140), 0x29344a).setOrigin(0.5,0);
-      // little ticks
-      for (let y=160; y<this.playerY; y+=48) this.add.rectangle(x, y, 12, 3, 0x445273).setOrigin(0.5);
     });
 
     // Player starts center column
     this.playerCol = 1;
     this.player = this.add.image(this.colsX[this.playerCol], this.playerY, 'runner').setScale(2);
 
-    // Column letters (at top)
+    // Column letters at top
     this.letterTexts = this.colsX.map(x => this.add.text(x, 160, '', {
       fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
     }).setOrigin(0.5));
 
-    // Group for falling obstacles (two wrong columns)
+    // Group for falling obstacles (wrong columns)
     this.obGroup = this.add.group();
+    this.activeObstacles = 0;   // track for "settling" after correct key
+    this.settling = false;      // lock input while reds finish falling
 
-    // Speed tuned so time-to-player ~= reaction window
+    // Speed so time-to-player ~= reaction window
     this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // px/sec
 
     // Stats
@@ -89,27 +89,34 @@ export default class PlayScene extends Phaser.Scene {
     // First wave
     this._nextWave();
 
-    // Input handling
+    // Input
     this.keyHandler = (e)=>{
-      if (this.gameOver || this.paused) return;
       if (e.repeat) return;
       if (IGNORE_KEYS.has(e.key)) {
         if (e.key === 'Escape') this._togglePause();
         if (e.key === 'r' || e.key === 'R') this.scene.restart({mode:this.mode, difficulty:this.difficulty});
         return;
       }
+      if (this.gameOver || this.paused || this.settling) return;
+
       const k = normalizeKey(e.key);
       if (!k || !isAllowedChar(k)) return;
 
-      // Only the green letter is valid
       if (k !== this.greenLetter) { this._endGame('Wrong key!'); return; }
 
-      // Success: hop to the green column, count, next wave
+      // Correct: move to safe column, hide green label, let reds finish to bottom
       this._goToColumn(this.safeCol);
       this.lettersTyped++;
       this._clearWaveTimer();
+      this.settling = true;
+      this.letterTexts[this.safeCol].setText(''); // hide green
       SFX.ok();
-      this._nextWave();
+
+      // When both reds finish falling to bottom, start next wave
+      if (this.activeObstacles === 0) { // (edge case) nothing falling
+        this.settling = false;
+        this._nextWave();
+      }
     };
     window.addEventListener('keydown', this.keyHandler);
   }
@@ -125,23 +132,19 @@ export default class PlayScene extends Phaser.Scene {
       }).setOrigin(0.5);
     } else {
       this.pauseOverlay?.destroy(); this.pauseText?.destroy();
-      this._startWaveTimer(); // restart timer fresh
+      if (!this.settling) this._startWaveTimer();
     }
   }
 
   _goToColumn(colIndex){
     this.playerCol = colIndex;
-    this.tweens.add({
-      targets: this.player,
-      x: this.colsX[this.playerCol],
-      duration: 90,
-      ease: 'Quad.easeOut'
-    });
+    this.tweens.add({ targets: this.player, x: this.colsX[this.playerCol], duration: 90, ease: 'Quad.easeOut' });
   }
 
   _clearObstacles(){
     this.obGroup.getChildren().forEach(o=> o.destroy());
     this.obGroup.clear(false, true);
+    this.activeObstacles = 0;
   }
 
   _clearWaveTimer(){
@@ -158,20 +161,18 @@ export default class PlayScene extends Phaser.Scene {
   _nextWave(){
     this._clearObstacles();
     this._clearWaveTimer();
+    this.settling = false;
 
-    // Pick safe column and letters
+    // Pick safe column + letters
     this.safeCol = Phaser.Math.Between(0,2);
     this.greenLetter = Phaser.Utils.Array.GetRandom(this.pool);
 
-    // two distinct wrong letters
     const wrongs = Phaser.Utils.Array.Shuffle(this.pool.filter(ch => ch !== this.greenLetter)).slice(0,2);
-
     const lettersByCol = [];
     lettersByCol[this.safeCol] = this.greenLetter;
-    let wi = 0;
-    [0,1,2].forEach(c => { if (c !== this.safeCol) lettersByCol[c] = wrongs[wi++]; });
+    let wi = 0; [0,1,2].forEach(c => { if (c !== this.safeCol) lettersByCol[c] = wrongs[wi++]; });
 
-    // Paint column letters (color-coded)
+    // Paint letters (green/red)
     const GREEN = '#7CFFA1', RED = '#ff5566';
     this.letterTexts.forEach((txt, c) => {
       const isGreen = (c === this.safeCol);
@@ -179,25 +180,45 @@ export default class PlayScene extends Phaser.Scene {
       txt.setColor(isGreen ? GREEN : RED);
     });
 
-    // Highlight correct key on on-screen keyboard
+    // Highlight correct key
     this.kb.highlight(this.greenLetter);
 
-    // Spawn falling obstacles in the two WRONG columns
+    // Spawn falling obstacles in WRONG columns; they now continue past the player to bottom
+    const toPlayerDur = ((this.playerY - this.spawnY) / this.dropSpeed) * 1000;
+    const toBottomDur = ((this.bottomY - this.playerY) / this.dropSpeed) * 1000;
+
     [0,1,2].forEach(c => {
       if (c === this.safeCol) return;
       const ob = this.add.image(this.colsX[c], this.spawnY, 'ob').setScale(2);
       this.obGroup.add(ob);
+      this.activeObstacles++;
+
+      // 1) Fall to player line, check collision
       this.tweens.add({
         targets: ob,
         y: this.playerY,
-        duration: ((this.playerY - this.spawnY) / this.dropSpeed) * 1000,
+        duration: toPlayerDur,
         ease: 'Linear',
         onComplete: () => {
           if (!this.gameOver && this.playerCol === c) {
             this._endGame('Collision!');
-          } else {
-            ob.destroy();
+            return;
           }
+          // 2) Continue to bottom, then disappear
+          this.tweens.add({
+            targets: ob,
+            y: this.bottomY,
+            duration: toBottomDur,
+            ease: 'Linear',
+            onComplete: () => {
+              ob.destroy();
+              this.activeObstacles--;
+              if (this.settling && this.activeObstacles === 0) {
+                this.settling = false;
+                this._nextWave();
+              }
+            }
+          });
         }
       });
     });
