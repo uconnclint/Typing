@@ -15,22 +15,10 @@ export default class PlayScene extends Phaser.Scene {
 
   create(){
     const { width, height } = this.scale;
+
+    // BG + header
     this.add.rectangle(0,0,width,height,0x0a0f18).setOrigin(0);
     this.add.rectangle(0,0,width,64,0x1f2640).setOrigin(0);
-
-    // Lanes
-    this.lanesY = [240, 340, 440];
-    this.lanesY.forEach(y=>{
-      this.add.rectangle(0, y, width, 6, 0x29344a).setOrigin(0,0.5);
-      for (let i=0;i<width;i+=40) this.add.rectangle(i+20, y, 16, 3, 0x445273).setOrigin(0.5);
-    });
-
-    // Player
-    this.playerX = 120;
-    this.playerLane = 1;
-    this.player = this.add.image(this.playerX, this.lanesY[this.playerLane], 'runner').setScale(2);
-
-    // HUD
     this.timeText  = this.add.text(20,  20, 'TIME 0.0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
     this.letText   = this.add.text(250, 20, 'LETTERS 0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
     this.scoreText = this.add.text(540, 20, 'SCORE 0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
@@ -38,7 +26,7 @@ export default class PlayScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
     }).setOrigin(0.5);
 
-    // Mute
+    // 🔊/🔇 mute (sync SFX + music)
     this.muteText = this.add.text(width-60, 20, (localStorage.getItem('kr_muted')==='1')?'🔇':'🔊', {fontSize:'28px'})
       .setInteractive({useHandCursor:true})
       .on('pointerdown', () => {
@@ -48,40 +36,49 @@ export default class PlayScene extends Phaser.Scene {
       });
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
-// On-screen keyboard (centered & auto-fit, with safe scaling)
-this.kb = new OnScreenKeyboard(this);
-this.add.existing(this.kb);
+    // On-screen keyboard FIRST (so we can place player above it)
+    this.kb = new OnScreenKeyboard(this);
+    this.add.existing(this.kb);
+    const kbW = this.kb.totalWidth || 460;
+    const kbH = this.kb.totalHeight || 140;
+    const margin = 20;
+    const avail = width - margin*2;
+    const scale = Math.min(1, avail / kbW);
+    if (typeof this.kb.setScale === 'function') { this.kb.setScale(scale); }
+    else { this.kb.scaleX = scale; this.kb.scaleY = scale; }
+    this.kb.x = Math.round((width - kbW * scale) / 2);
+    this.kb.y = Math.round(height - (kbH * scale) - margin);
 
-// fallback sizes if your OnScreenKeyboard.js isn't the new one yet
-const kbW = this.kb.totalWidth || 460;
-const kbH = this.kb.totalHeight || 140;
+    // Vertical columns (x positions) and player position (near bottom)
+    const centerX = width / 2;
+    const colOffset = 160; // spacing between columns
+    this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-const margin = 20;
-const avail = this.scale.width - margin*2;
-const scale = Math.min(1, avail / kbW);
+    this.playerY = this.kb.y - 60; // sit above keyboard
+    this.spawnY = -60;             // start falling from above the screen
 
-// tolerate missing setScale()
-if (typeof this.kb.setScale === 'function') {
-  this.kb.setScale(scale);
-} else {
-  this.kb.scaleX = scale;
-  this.kb.scaleY = scale;
-}
+    // Column guides
+    this.colsX.forEach(x=>{
+      // faint guide line
+      this.add.rectangle(x, 140, 4, Math.max(0, this.playerY - 140), 0x29344a).setOrigin(0.5,0);
+      // little ticks
+      for (let y=160; y<this.playerY; y+=48) this.add.rectangle(x, y, 12, 3, 0x445273).setOrigin(0.5);
+    });
 
-this.kb.x = Math.round((this.scale.width - kbW * scale) / 2);
-this.kb.y = Math.round(this.scale.height - (kbH * scale) - margin);
+    // Player starts center column
+    this.playerCol = 1;
+    this.player = this.add.image(this.colsX[this.playerCol], this.playerY, 'runner').setScale(2);
 
-    // Lane letters
-    this.letterTexts = this.lanesY.map(y => this.add.text(this.playerX + 260, y - 28, '', {
+    // Column letters (at top)
+    this.letterTexts = this.colsX.map(x => this.add.text(x, 160, '', {
       fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
     }).setOrigin(0.5));
 
-    // Obstacles
+    // Group for falling obstacles (two wrong columns)
     this.obGroup = this.add.group();
 
-    // Speed tuned to reaction window
-    const spawnX = width + 60;
-    this.obSpeed = (spawnX - this.playerX) / this.reaction;
+    // Speed tuned so time-to-player ~= reaction window
+    this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // px/sec
 
     // Stats
     this.lettersTyped = 0;
@@ -92,7 +89,7 @@ this.kb.y = Math.round(this.scale.height - (kbH * scale) - margin);
     // First wave
     this._nextWave();
 
-    // Input
+    // Input handling
     this.keyHandler = (e)=>{
       if (this.gameOver || this.paused) return;
       if (e.repeat) return;
@@ -104,8 +101,11 @@ this.kb.y = Math.round(this.scale.height - (kbH * scale) - margin);
       const k = normalizeKey(e.key);
       if (!k || !isAllowedChar(k)) return;
 
+      // Only the green letter is valid
       if (k !== this.greenLetter) { this._endGame('Wrong key!'); return; }
-      this._goToLane(this.safeLane);
+
+      // Success: hop to the green column, count, next wave
+      this._goToColumn(this.safeCol);
       this.lettersTyped++;
       this._clearWaveTimer();
       SFX.ok();
@@ -125,13 +125,18 @@ this.kb.y = Math.round(this.scale.height - (kbH * scale) - margin);
       }).setOrigin(0.5);
     } else {
       this.pauseOverlay?.destroy(); this.pauseText?.destroy();
-      this._startWaveTimer();
+      this._startWaveTimer(); // restart timer fresh
     }
   }
 
-  _goToLane(laneIndex){
-    this.playerLane = laneIndex;
-    this.tweens.add({ targets: this.player, y: this.lanesY[this.playerLane], duration: 90, ease: 'Quad.easeOut' });
+  _goToColumn(colIndex){
+    this.playerCol = colIndex;
+    this.tweens.add({
+      targets: this.player,
+      x: this.colsX[this.playerCol],
+      duration: 90,
+      ease: 'Quad.easeOut'
+    });
   }
 
   _clearObstacles(){
@@ -154,47 +159,50 @@ this.kb.y = Math.round(this.scale.height - (kbH * scale) - margin);
     this._clearObstacles();
     this._clearWaveTimer();
 
-    // Choose green lane/letter
-    this.safeLane = Phaser.Math.Between(0,2);
+    // Pick safe column and letters
+    this.safeCol = Phaser.Math.Between(0,2);
     this.greenLetter = Phaser.Utils.Array.GetRandom(this.pool);
 
-    // Choose two distinct wrong letters
+    // two distinct wrong letters
     const wrongs = Phaser.Utils.Array.Shuffle(this.pool.filter(ch => ch !== this.greenLetter)).slice(0,2);
 
-    const lettersByLane = [];
-    lettersByLane[this.safeLane] = this.greenLetter;
+    const lettersByCol = [];
+    lettersByCol[this.safeCol] = this.greenLetter;
     let wi = 0;
-    [0,1,2].forEach(l => { if (l !== this.safeLane) lettersByLane[l] = wrongs[wi++]; });
+    [0,1,2].forEach(c => { if (c !== this.safeCol) lettersByCol[c] = wrongs[wi++]; });
 
-    // Paint lane letters
+    // Paint column letters (color-coded)
     const GREEN = '#7CFFA1', RED = '#ff5566';
-    this.letterTexts.forEach((txt, l) => {
-      const isGreen = (l === this.safeLane);
-      txt.setText(lettersByLane[l].toUpperCase());
+    this.letterTexts.forEach((txt, c) => {
+      const isGreen = (c === this.safeCol);
+      txt.setText(lettersByCol[c].toUpperCase());
       txt.setColor(isGreen ? GREEN : RED);
     });
 
-    // Highlight correct key
+    // Highlight correct key on on-screen keyboard
     this.kb.highlight(this.greenLetter);
 
-    // Spawn obstacles in wrong lanes
-    const { width } = this.scale;
-    [0,1,2].forEach(l => {
-      if (l === this.safeLane) return;
-      const ob = this.add.image(width + 60, this.lanesY[l], 'ob').setScale(2);
+    // Spawn falling obstacles in the two WRONG columns
+    [0,1,2].forEach(c => {
+      if (c === this.safeCol) return;
+      const ob = this.add.image(this.colsX[c], this.spawnY, 'ob').setScale(2);
       this.obGroup.add(ob);
       this.tweens.add({
         targets: ob,
-        x: this.playerX,
-        duration: ((ob.x - this.playerX) / this.obSpeed) * 1000,
+        y: this.playerY,
+        duration: ((this.playerY - this.spawnY) / this.dropSpeed) * 1000,
         ease: 'Linear',
         onComplete: () => {
-          if (!this.gameOver && this.playerLane === l) { this._endGame('Collision!'); }
-          else { ob.destroy(); }
+          if (!this.gameOver && this.playerCol === c) {
+            this._endGame('Collision!');
+          } else {
+            ob.destroy();
+          }
         }
       });
     });
 
+    // Start reaction timer (no input in time => fail)
     this._startWaveTimer();
   }
 
