@@ -3,8 +3,11 @@ import { KEY_POOLS, normalizeKey, isAllowedChar, IGNORE_KEYS } from '../utils/ke
 import { SFX } from '../utils/audio.js';
 import OnScreenKeyboard from '../ui/OnScreenKeyboard.js';
 
-export default class PlayScene extends Phaser.Scene {
-  constructor(){ super('play'); }
+export default class OnScreenKeyboard extends Phaser.GameObjects.Container {
+  constructor(scene, x=0, y=0){
+    super(scene, x, y);        // <-- this super() is required
+    // ...
+  }
 
   init(data){
     this.mode = data.mode || GameConfig.mode || 'mixed';
