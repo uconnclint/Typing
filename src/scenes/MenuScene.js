@@ -5,15 +5,15 @@ export default class MenuScene extends Phaser.Scene {
   constructor(){ super('menu'); }
 
   create(){
-    const { width, height } = this.scale;
-    this.add.rectangle(0,0,width,height,0x0d1220).setOrigin(0);
+    const { width } = this.scale;
+    this.add.rectangle(0,0,width,this.scale.height,0x0d1220).setOrigin(0);
     this.add.rectangle(0,0,width,140,0x1f2640).setOrigin(0);
     this.add.text(width/2, 70, 'KEY RUNNER', { fontFamily:'"Press Start 2P"', fontSize:'34px', color:'#e6f3ff' }).setOrigin(0.5);
-    this.add.text(width/2, 150, 'Type the shown key to switch lanes. Wrong key = instant game over.', {
+    this.add.text(width/2, 150, 'Type the green letter before time runs out. Wrong key ends the run.', {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9db2d0', align:'center'
     }).setOrigin(0.5);
 
-    // Mode buttons
+    // Practice Mode
     const modes = ['home','top','bottom','mixed'];
     const y1 = 230;
     this.add.text(70, y1-32, 'Practice Mode', {fontFamily:'"Press Start 2P"', fontSize:'16px', color:'#cfe4ff'});
@@ -21,7 +21,7 @@ export default class MenuScene extends Phaser.Scene {
       GameConfig.mode = m; SFX.tick(); this._refresh();
     }));
 
-    // Difficulty buttons
+    // Difficulty
     const diffs = ['easy','medium','hard'];
     const y2 = 330;
     this.add.text(70, y2-32, 'Difficulty', {fontFamily:'"Press Start 2P"', fontSize:'16px', color:'#cfe4ff'});
@@ -29,14 +29,13 @@ export default class MenuScene extends Phaser.Scene {
       GameConfig.difficulty = d; SFX.tick(); this._refresh();
     }));
 
-    // 🎵 Music picker
+    // Music picker
     const y3 = 410;
     this.add.text(70, y3-32, 'Music', {fontFamily:'"Press Start 2P"', fontSize:'16px', color:'#cfe4ff'});
     this.trackIndex = getSelectedTrackIndex();
-
-    const prev = this._button(70, y3, 44, 44, '◀', () => { this._changeTrack(-1); });
-    const next = this._button(70+300, y3, 44, 44, '▶', () => { this._changeTrack(+1); });
-    this.trackLabel = this.add.text(70+60, y3+10, '', {
+    this._button(70, y3, 44, 44, '◀', () => this._changeTrack(-1));
+    this._button(370, y3, 44, 44, '▶', () => this._changeTrack(+1));
+    this.trackLabel = this.add.text(130, y3+10, '', {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
     }).setOrigin(0,0);
 
@@ -46,41 +45,34 @@ export default class MenuScene extends Phaser.Scene {
       this.scene.start('play', { mode: GameConfig.mode, difficulty: GameConfig.difficulty });
     });
 
-    // 🔊/🔇 mute (persists + syncs Phaser audio)
+    // 🔊/🔇 mute
     this.muteText = this.add.text(width-60, 20, (localStorage.getItem('kr_muted')==='1')?'🔇':'🔊', {fontSize:'28px'})
       .setInteractive({useHandCursor:true})
       .on('pointerdown', () => {
         SFX.setMuted(!SFX.muted);
-        this.sound.mute = SFX.muted;
+        this.sound.mute = SFX.muted;                 // <-- music too
         this.muteText.setText(SFX.muted ? '🔇' : '🔊');
       });
 
-    // init UI + start music for current selection
+    // Init UI + audio state
     this._refresh();
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
-    this._changeTrack(0); // play currently selected track
-
-    // stop music dupes on hot-reenter
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      // keep music running into Play; nothing to clean here
-    });
+    this._changeTrack(0); // start selected track
   }
 
   _changeTrack(delta){
-    // update index (wrap)
     this.trackIndex = (this.trackIndex + delta + TRACKS.length) % TRACKS.length;
     setSelectedTrackIndex(this.trackIndex);
 
-    // update label
-    this.trackLabel.setText(TRACKS[this.trackIndex].title.toUpperCase());
+    const meta = TRACKS[this.trackIndex];
+    this.trackLabel.setText(meta.title.toUpperCase());
 
-    // stop previous & play new
     if (this.music && this.music.isPlaying) this.music.stop();
-    const key = TRACKS[this.trackIndex].id;
-    let snd = this.sound.get(key);
-    if (!snd) snd = this.sound.add(key, { loop: true, volume: 0.25 });
+    let snd = this.sound.get(meta.id);
+    if (!snd) snd = this.sound.add(meta.id, { loop: true, volume: 0.25 });
     snd.play();
     this.music = snd;
+
     this.sound.mute = SFX.muted; // keep in sync with toggle
   }
 
@@ -102,7 +94,6 @@ export default class MenuScene extends Phaser.Scene {
       `MODE: ${GameConfig.mode.toUpperCase()}    DIFFICULTY: ${GameConfig.difficulty.toUpperCase()}`,
       {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'}
     );
-    // track label may not exist the first time create() runs
     if (this.trackLabel) this.trackLabel.setText(TRACKS[this.trackIndex].title.toUpperCase());
   }
 }
