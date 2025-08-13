@@ -6,8 +6,7 @@ export default class OnScreenKeyboard extends Phaser.GameObjects.Container {
     this.scene = scene;
     this.keys = [];
 
-    const KEY_SPACING = 40;
-    const KEY_W = 36;
+    const KEY_SPACING = 40, KEY_W = 36;
     const rows = [
       { arr: KEY_POOLS.top,    y: 0,   xOff: 24 },
       { arr: KEY_POOLS.home,   y: 50,  xOff: 44 },
@@ -26,12 +25,11 @@ export default class OnScreenKeyboard extends Phaser.GameObjects.Container {
         this.keys.push({k, cap, txt});
         x += KEY_SPACING;
       });
-      // row width = left offset + (n-1)*spacing + key width
       const rowWidth = r.xOff + (r.arr.length - 1)*KEY_SPACING + KEY_W;
       maxW = Math.max(maxW, rowWidth);
     });
 
-    this.totalWidth = maxW;       // expose size for layout
+    this.totalWidth = maxW;
     this.totalHeight = 140;
     this.setSize(maxW, this.totalHeight);
   }
