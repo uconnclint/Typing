@@ -48,15 +48,28 @@ export default class PlayScene extends Phaser.Scene {
       });
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
-    // On-screen keyboard (center & auto-fit)
-    this.kb = new OnScreenKeyboard(this);
-    this.add.existing(this.kb);
-    const margin = 20;
-    const avail = width - margin*2;
-    const scale = Math.min(1, avail / this.kb.totalWidth);
-    this.kb.setScale(scale);
-    this.kb.x = Math.round((width - this.kb.totalWidth*scale) / 2);
-    this.kb.y = Math.round(height - (this.kb.totalHeight*scale) - margin);
+// On-screen keyboard (centered & auto-fit, with safe scaling)
+this.kb = new OnScreenKeyboard(this);
+this.add.existing(this.kb);
+
+// fallback sizes if your OnScreenKeyboard.js isn't the new one yet
+const kbW = this.kb.totalWidth || 460;
+const kbH = this.kb.totalHeight || 140;
+
+const margin = 20;
+const avail = this.scale.width - margin*2;
+const scale = Math.min(1, avail / kbW);
+
+// tolerate missing setScale()
+if (typeof this.kb.setScale === 'function') {
+  this.kb.setScale(scale);
+} else {
+  this.kb.scaleX = scale;
+  this.kb.scaleY = scale;
+}
+
+this.kb.x = Math.round((this.scale.width - kbW * scale) / 2);
+this.kb.y = Math.round(this.scale.height - (kbH * scale) - margin);
 
     // Lane letters
     this.letterTexts = this.lanesY.map(y => this.add.text(this.playerX + 260, y - 28, '', {
