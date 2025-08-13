@@ -11,5 +11,13 @@
 <body>
   <div id="game"></div>
   <script type="module" src="./src/main.js"></script>
+  <script>
+window.addEventListener('error', e => {
+  const pre = document.createElement('pre');
+  pre.style.cssText='position:fixed;left:0;top:0;right:0;background:#300;color:#fff;padding:8px;margin:0;z-index:99999';
+  pre.textContent = 'JS Error: ' + (e.message || e.error);
+  document.body.prepend(pre);
+});
+</script>
 </body>
 </html>
