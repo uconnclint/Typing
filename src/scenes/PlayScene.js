@@ -60,12 +60,20 @@ export default class PlayScene extends Phaser.Scene {
     const colOffset = 160;
     this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-    // Column guides (longer: down to keyboard top)
-    this.colsX.forEach(x=>{
-      const h = Math.max(0, this.kbTopY - 140);
-      this.add.rectangle(x, 140, 4, h, 0x29344a).setOrigin(0.5,0);
-    });
+  // === Column guides (no line behind the letter labels) ===
+const labelY = 160;                  // where the letters sit
+const gapBelowLabel = 26;            // leave space under the letter
+const guideStartY = labelY + gapBelowLabel;
 
+this.colsX.forEach(x=>{
+  const h = Math.max(0, this.kbTopY - guideStartY);
+  this.add.rectangle(x, guideStartY, 4, h, 0x29344a).setOrigin(0.5,0);
+});
+
+// (and make sure your labels use the same Y)
+this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
+  fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
+}).setOrigin(0.5));
     // Player
     this.playerCol = 1;
     this.player = this.add.image(this.colsX[this.playerCol], this.playerY, 'runner').setScale(2);
