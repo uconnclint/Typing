@@ -6,7 +6,7 @@ export const GameConfig = {
   height: 600
 };
 
-// 🎵 Add your tracks here (filenames must exist in /assets)
+// 🎵 Update titles/urls if you rename files in /assets
 export const TRACKS = [
   { id: 't0', title: 'Pixel Quest',           url: 'assets/Pixel Quest_2025-08-09T14_18_09.mp3' },
   { id: 't1', title: 'Type All Day',          url: 'assets/Type All Day.mp3' },
@@ -21,7 +21,6 @@ export function savePrefs() {
   localStorage.setItem('kr_diff', GameConfig.difficulty);
 }
 
-// helpers to remember the selected song
 export function getSelectedTrackIndex() {
   const n = parseInt(localStorage.getItem('kr_track_idx') ?? '0', 10);
   return Number.isFinite(n) ? Math.max(0, Math.min(n, TRACKS.length - 1)) : 0;
