@@ -49,9 +49,17 @@ export default class PlayScene extends Phaser.Scene {
         this.muteText.setText(SFX.muted ? '🔇' : '🔊');
       });
 
-    // On-screen keyboard
-    this.kb = new OnScreenKeyboard(this, width - 340, height - 180);
-    this.add.existing(this.kb);
+// On-screen keyboard (centered & auto-fit)
+this.kb = new OnScreenKeyboard(this);
+this.add.existing(this.kb);
+
+const margin = 20;
+const avail = this.scale.width - margin*2;
+const scale = Math.min(1, avail / this.kb.totalWidth);
+
+this.kb.setScale(scale);
+this.kb.x = Math.round((this.scale.width - this.kb.totalWidth*scale) / 2);
+this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin);
 
     // Letters above lanes
     this.letterTexts = this.lanesY.map((y, i) => this.add.text(this.playerX + 260, y - 28, '', {
