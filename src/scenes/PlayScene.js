@@ -15,8 +15,6 @@ export default class PlayScene extends Phaser.Scene {
 
   create(){
     const { width, height } = this.scale;
-
-    // Background + header
     this.add.rectangle(0,0,width,height,0x0a0f18).setOrigin(0);
     this.add.rectangle(0,0,width,64,0x1f2640).setOrigin(0);
 
@@ -27,7 +25,7 @@ export default class PlayScene extends Phaser.Scene {
       for (let i=0;i<width;i+=40) this.add.rectangle(i+20, y, 16, 3, 0x445273).setOrigin(0.5);
     });
 
-    // Player starts middle lane
+    // Player
     this.playerX = 120;
     this.playerLane = 1;
     this.player = this.add.image(this.playerX, this.lanesY[this.playerLane], 'runner').setScale(2);
@@ -36,11 +34,11 @@ export default class PlayScene extends Phaser.Scene {
     this.timeText  = this.add.text(20,  20, 'TIME 0.0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
     this.letText   = this.add.text(250, 20, 'LETTERS 0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
     this.scoreText = this.add.text(540, 20, 'SCORE 0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
-    this.promptTxt = this.add.text(width/2, 92, 'TYPE THE GREEN LETTER', {
+    this.add.text(width/2, 92, 'TYPE THE GREEN LETTER', {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
     }).setOrigin(0.5);
 
-    // Mute (sync SFX + Phaser)
+    // Mute
     this.muteText = this.add.text(width-60, 20, (localStorage.getItem('kr_muted')==='1')?'🔇':'🔊', {fontSize:'28px'})
       .setInteractive({useHandCursor:true})
       .on('pointerdown', () => {
@@ -48,30 +46,29 @@ export default class PlayScene extends Phaser.Scene {
         this.sound.mute = SFX.muted;
         this.muteText.setText(SFX.muted ? '🔇' : '🔊');
       });
+    this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
-// On-screen keyboard (centered & auto-fit)
-this.kb = new OnScreenKeyboard(this);
-this.add.existing(this.kb);
+    // On-screen keyboard (center & auto-fit)
+    this.kb = new OnScreenKeyboard(this);
+    this.add.existing(this.kb);
+    const margin = 20;
+    const avail = width - margin*2;
+    const scale = Math.min(1, avail / this.kb.totalWidth);
+    this.kb.setScale(scale);
+    this.kb.x = Math.round((width - this.kb.totalWidth*scale) / 2);
+    this.kb.y = Math.round(height - (this.kb.totalHeight*scale) - margin);
 
-const margin = 20;
-const avail = this.scale.width - margin*2;
-const scale = Math.min(1, avail / this.kb.totalWidth);
-
-this.kb.setScale(scale);
-this.kb.x = Math.round((this.scale.width - this.kb.totalWidth*scale) / 2);
-this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin);
-
-    // Letters above lanes
-    this.letterTexts = this.lanesY.map((y, i) => this.add.text(this.playerX + 260, y - 28, '', {
+    // Lane letters
+    this.letterTexts = this.lanesY.map(y => this.add.text(this.playerX + 260, y - 28, '', {
       fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
     }).setOrigin(0.5));
 
-    // Obstacles (still travel in two wrong lanes)
+    // Obstacles
     this.obGroup = this.add.group();
 
-    // Speed so obstacle arrival ~ reaction window
+    // Speed tuned to reaction window
     const spawnX = width + 60;
-    this.obSpeed = (spawnX - this.playerX) / this.reaction; // px/sec
+    this.obSpeed = (spawnX - this.playerX) / this.reaction;
 
     // Stats
     this.lettersTyped = 0;
@@ -82,7 +79,7 @@ this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin)
     // First wave
     this._nextWave();
 
-    // Input handling
+    // Input
     this.keyHandler = (e)=>{
       if (this.gameOver || this.paused) return;
       if (e.repeat) return;
@@ -94,13 +91,7 @@ this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin)
       const k = normalizeKey(e.key);
       if (!k || !isAllowedChar(k)) return;
 
-      // GREEN is the only valid answer for this wave
-      if (k !== this.greenLetter) {
-        this._endGame('Wrong key!');
-        return;
-      }
-
-      // Success: hop to the green lane, count, next wave
+      if (k !== this.greenLetter) { this._endGame('Wrong key!'); return; }
       this._goToLane(this.safeLane);
       this.lettersTyped++;
       this._clearWaveTimer();
@@ -121,7 +112,6 @@ this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin)
       }).setOrigin(0.5);
     } else {
       this.pauseOverlay?.destroy(); this.pauseText?.destroy();
-      // restart the current wave timer fresh
       this._startWaveTimer();
     }
   }
@@ -148,28 +138,22 @@ this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin)
   }
 
   _nextWave(){
-    // reset visuals + timers
     this._clearObstacles();
     this._clearWaveTimer();
 
-    // Decide which lane is green
+    // Choose green lane/letter
     this.safeLane = Phaser.Math.Between(0,2);
+    this.greenLetter = Phaser.Utils.Array.GetRandom(this.pool);
 
-    // Pick letters: one green + two unique reds
-    const pool = this.pool;
-    this.greenLetter = Phaser.Utils.Array.GetRandom(pool);
-
-    let red1, red2;
-    do { red1 = Phaser.Utils.Array.GetRandom(pool); } while (red1 === this.greenLetter);
-    do { red2 = Phaser.Utils.Array.GetRandom(pool); } while (red2 === this.greenLetter || red2 === red1);
+    // Choose two distinct wrong letters
+    const wrongs = Phaser.Utils.Array.Shuffle(this.pool.filter(ch => ch !== this.greenLetter)).slice(0,2);
 
     const lettersByLane = [];
-    for (let l = 0; l < 3; l++) {
-      if (l === this.safeLane) lettersByLane[l] = this.greenLetter;
-      else lettersByLane[l] = (lettersByLane.includes(red1) ? red2 : red1);
-    }
+    lettersByLane[this.safeLane] = this.greenLetter;
+    let wi = 0;
+    [0,1,2].forEach(l => { if (l !== this.safeLane) lettersByLane[l] = wrongs[wi++]; });
 
-    // Update lane labels (color-coded)
+    // Paint lane letters
     const GREEN = '#7CFFA1', RED = '#ff5566';
     this.letterTexts.forEach((txt, l) => {
       const isGreen = (l === this.safeLane);
@@ -177,10 +161,10 @@ this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin)
       txt.setColor(isGreen ? GREEN : RED);
     });
 
-    // Highlight the correct key on the on-screen keyboard
+    // Highlight correct key
     this.kb.highlight(this.greenLetter);
 
-    // Spawn obstacles in the two WRONG lanes
+    // Spawn obstacles in wrong lanes
     const { width } = this.scale;
     [0,1,2].forEach(l => {
       if (l === this.safeLane) return;
@@ -192,16 +176,12 @@ this.kb.y = Math.round(this.scale.height - (this.kb.totalHeight*scale) - margin)
         duration: ((ob.x - this.playerX) / this.obSpeed) * 1000,
         ease: 'Linear',
         onComplete: () => {
-          if (!this.gameOver && this.playerLane === l) {
-            this._endGame('Collision!');
-          } else {
-            ob.destroy();
-          }
+          if (!this.gameOver && this.playerLane === l) { this._endGame('Collision!'); }
+          else { ob.destroy(); }
         }
       });
     });
 
-    // Start the reaction timer: no input in time => fail
     this._startWaveTimer();
   }
 
