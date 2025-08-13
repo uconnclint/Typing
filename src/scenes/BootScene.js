@@ -1,10 +1,10 @@
-import { TRACKS } from '../config.js';   // ⬅️ this line is required
+import { TRACKS } from '../config.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor(){ super('boot'); }
 
   preload(){
-    // Preload every track (paths come from TRACKS)
+    // Preload music so we can swap instantly on the menu
     TRACKS.forEach(t => this.load.audio(t.id, [t.url]));
   }
 
