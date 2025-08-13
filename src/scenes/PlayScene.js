@@ -49,21 +49,24 @@ export default class PlayScene extends Phaser.Scene {
     this.kb.x = Math.round((width - kbW * scale) / 2);
     this.kb.y = Math.round(height - (kbH * scale) - margin);
 
-    // Vertical columns (x) + positions
+    // Useful layout Ys
+    this.kbTopY  = this.kb.y;          // top edge of the keyboard
+    this.playerY = this.kbTopY - 60;   // runner sits above keyboard
+    this.spawnY  = -60;                // letters start above screen
+    this.stopY   = this.kbTopY - 8;    // reds stop just before keyboard and vanish
+
+    // Columns (x positions)
     const centerX = width / 2;
-    const colOffset = 160; // spacing between columns
+    const colOffset = 160;
     this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-    this.playerY = this.kb.y - 60; // runner above keyboard
-    this.spawnY  = -60;            // start above the screen
-    this.bottomY = height + 40;    // slide off-screen at the bottom
-
-    // Column guides (no more ladder rungs 👍)
+    // Column guides (longer: down to keyboard top)
     this.colsX.forEach(x=>{
-      this.add.rectangle(x, 140, 4, Math.max(0, this.playerY - 140), 0x29344a).setOrigin(0.5,0);
+      const h = Math.max(0, this.kbTopY - 140);
+      this.add.rectangle(x, 140, 4, h, 0x29344a).setOrigin(0.5,0);
     });
 
-    // Player starts center column
+    // Player
     this.playerCol = 1;
     this.player = this.add.image(this.colsX[this.playerCol], this.playerY, 'runner').setScale(2);
 
@@ -72,10 +75,10 @@ export default class PlayScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
     }).setOrigin(0.5));
 
-    // Group for falling obstacles (wrong columns)
+    // Falling obstacles
     this.obGroup = this.add.group();
-    this.activeObstacles = 0;   // track for "settling" after correct key
-    this.settling = false;      // lock input while reds finish falling
+    this.activeObstacles = 0; // for settling after correct press
+    this.settling = false;
 
     // Speed so time-to-player ~= reaction window
     this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // px/sec
@@ -104,7 +107,7 @@ export default class PlayScene extends Phaser.Scene {
 
       if (k !== this.greenLetter) { this._endGame('Wrong key!'); return; }
 
-      // Correct: move to safe column, hide green label, let reds finish to bottom
+      // Correct: move to safe column, hide green, let reds finish to keyboard then vanish
       this._goToColumn(this.safeCol);
       this.lettersTyped++;
       this._clearWaveTimer();
@@ -112,8 +115,7 @@ export default class PlayScene extends Phaser.Scene {
       this.letterTexts[this.safeCol].setText(''); // hide green
       SFX.ok();
 
-      // When both reds finish falling to bottom, start next wave
-      if (this.activeObstacles === 0) { // (edge case) nothing falling
+      if (this.activeObstacles === 0) { // safety
         this.settling = false;
         this._nextWave();
       }
@@ -183,10 +185,11 @@ export default class PlayScene extends Phaser.Scene {
     // Highlight correct key
     this.kb.highlight(this.greenLetter);
 
-    // Spawn falling obstacles in WRONG columns; they now continue past the player to bottom
+    // Durations
     const toPlayerDur = ((this.playerY - this.spawnY) / this.dropSpeed) * 1000;
-    const toBottomDur = ((this.bottomY - this.playerY) / this.dropSpeed) * 1000;
+    const toStopDur   = ((this.stopY   - this.playerY) / this.dropSpeed) * 1000;
 
+    // Spawn falling obstacles in WRONG columns; continue to keyboard then vanish
     [0,1,2].forEach(c => {
       if (c === this.safeCol) return;
       const ob = this.add.image(this.colsX[c], this.spawnY, 'ob').setScale(2);
@@ -204,11 +207,11 @@ export default class PlayScene extends Phaser.Scene {
             this._endGame('Collision!');
             return;
           }
-          // 2) Continue to bottom, then disappear
+          // 2) Continue to just above the keyboard, then disappear
           this.tweens.add({
             targets: ob,
-            y: this.bottomY,
-            duration: toBottomDur,
+            y: this.stopY,
+            duration: toStopDur,
             ease: 'Linear',
             onComplete: () => {
               ob.destroy();
