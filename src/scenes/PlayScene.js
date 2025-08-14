@@ -153,7 +153,7 @@ export default class PlayScene extends Phaser.Scene {
       this._clearWaveTimer();
       this.settling = true;
       this.letterTexts[this.safeCol].setText(''); // hide green
-      SFX.ok();
+    
 
       if (this.activeObstacles === 0) {
         this.settling = false;
