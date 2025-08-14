@@ -75,16 +75,13 @@ export default class PlayScene extends Phaser.Scene {
       this.add.rectangle(x, guideStartY, 4, h, 0x29344a).setOrigin(0.5,0);
     });
 
-    // Player sprite: prefer 'boy' if loaded; else fallback to 'runner'
+    // Player sprite
     const playerTexture = this.textures.exists('boy') ? 'boy' : 'runner';
     this.playerCol = 1;
     this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
-
-    // Auto-scale player to ~32px tall (crisp with integer-ish scale for pixel art)
     const desiredH = 32;
     const baseH = this.player.height || desiredH;
-    const s = desiredH / baseH;
-    this.player.setScale(s);
+    this.player.setScale(desiredH / baseH);
 
     // Column letters
     this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
@@ -105,8 +102,35 @@ export default class PlayScene extends Phaser.Scene {
     this.gameOver = false;
     this.paused = false;
 
-    // First wave
-    this._nextWave();
+    // ===== READY COUNTDOWN (3s) =====
+    this.ready = false;
+    this.countNum = 3;
+    this.countText = this.add.text(width/2, this.playerY - 80, '3', {
+      fontFamily:'"Press Start 2P"', fontSize:'48px', color:'#ffffff'
+    }).setOrigin(0.5).setAlpha(0.95);
+
+    // tick once per second: 3,2,1,GO
+    this.time.addEvent({
+      delay: 1000,
+      repeat: 3, // fires 4 times total
+      callback: () => {
+        if (this.countNum > 1) {
+          this.countNum--;
+          this.countText.setText(String(this.countNum));
+          SFX.tick();
+        } else if (this.countNum === 1) {
+          this.countNum = 0;
+          this.countText.setText('GO!');
+          SFX.ok();
+        } else {
+          // countdown finished -> start first wave
+          this.countText.destroy();
+          this.ready = true;
+          this._nextWave();
+        }
+      }
+    });
+    // ===== END COUNTDOWN =====
 
     // Input
     this.keyHandler = (e)=>{
@@ -116,7 +140,7 @@ export default class PlayScene extends Phaser.Scene {
         if (e.key === 'r' || e.key === 'R') this.scene.restart({mode:this.mode, difficulty:this.difficulty});
         return;
       }
-      if (this.gameOver || this.paused || this.settling) return;
+      if (this.gameOver || this.paused || this.settling || !this.ready) return;
 
       const k = normalizeKey(e.key);
       if (!k || !isAllowedChar(k)) return;
@@ -131,7 +155,7 @@ export default class PlayScene extends Phaser.Scene {
       this.letterTexts[this.safeCol].setText(''); // hide green
       SFX.ok();
 
-      if (this.activeObstacles === 0) { // safety
+      if (this.activeObstacles === 0) {
         this.settling = false;
         this._nextWave();
       }
@@ -150,7 +174,7 @@ export default class PlayScene extends Phaser.Scene {
       }).setOrigin(0.5);
     } else {
       this.pauseOverlay?.destroy(); this.pauseText?.destroy();
-      if (!this.settling) this._startWaveTimer();
+      if (!this.settling && this.ready) this._startWaveTimer();
     }
   }
 
@@ -177,6 +201,8 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   _nextWave(){
+    if (!this.ready) return; // don't spawn during countdown
+
     this._clearObstacles();
     this._clearWaveTimer();
     this.settling = false;
@@ -269,7 +295,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   update(){
-    if (this.gameOver || this.paused) return;
+    if (this.gameOver || this.paused || !this.ready) return;
     const t = Math.max(0, (this.time.now - this.startTime)/1000);
     const score = Math.floor(t * this.lettersTyped);
     this.timeText.setText(`TIME ${t.toFixed(1)}`);
