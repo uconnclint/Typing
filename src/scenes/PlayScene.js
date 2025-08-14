@@ -6,6 +6,13 @@ import OnScreenKeyboard from '../ui/OnScreenKeyboard.js';
 export default class PlayScene extends Phaser.Scene {
   constructor(){ super('play'); }
 
+  // Load boy.png here if BootScene didn't already
+  preload(){
+    if (!this.textures.exists('boy')) {
+      this.load.image('boy', 'assets/boy.png'); // put your file at /assets/boy.png
+    }
+  }
+
   init(data){
     this.mode = data.mode || GameConfig.mode || 'mixed';
     this.difficulty = data.difficulty || GameConfig.difficulty || 'easy';
@@ -49,46 +56,47 @@ export default class PlayScene extends Phaser.Scene {
     this.kb.x = Math.round((width - kbW * scale) / 2);
     this.kb.y = Math.round(height - (kbH * scale) - margin);
 
-    // Useful layout Ys
-    this.kbTopY  = this.kb.y;          // top edge of the keyboard
-    this.playerY = this.kbTopY - 60;   // runner sits above keyboard
-    this.spawnY  = -60;                // letters start above screen
-    this.stopY   = this.kbTopY - 8;    // reds stop just before keyboard and vanish
+    // Layout Ys
+    const labelY = 160;                 // letter labels sit here
+    const guideStartY = labelY + 26;    // start guides BELOW labels (no line behind text)
+    this.kbTopY  = this.kb.y;           // top edge of keyboard
+    this.playerY = this.kbTopY - 60;    // runner above keyboard
+    this.spawnY  = -60;                 // spawn above screen
+    this.stopY   = this.kbTopY - 8;     // reds stop right before keyboard
 
     // Columns (x positions)
     const centerX = width / 2;
     const colOffset = 160;
     this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-  // === Column guides (no line behind the letter labels) ===
-const labelY = 160;                  // where the letters sit
-const gapBelowLabel = 26;            // leave space under the letter
-const guideStartY = labelY + gapBelowLabel;
+    // Column guides (down to keyboard top; no ladder rungs)
+    this.colsX.forEach(x=>{
+      const h = Math.max(0, this.kbTopY - guideStartY);
+      this.add.rectangle(x, guideStartY, 4, h, 0x29344a).setOrigin(0.5,0);
+    });
 
-this.colsX.forEach(x=>{
-  const h = Math.max(0, this.kbTopY - guideStartY);
-  this.add.rectangle(x, guideStartY, 4, h, 0x29344a).setOrigin(0.5,0);
-});
-
-// (and make sure your labels use the same Y)
-this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
-  fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
-}).setOrigin(0.5));
-    // Player
+    // Player sprite: prefer 'boy' if loaded; else fallback to 'runner'
+    const playerTexture = this.textures.exists('boy') ? 'boy' : 'runner';
     this.playerCol = 1;
-    this.player = this.add.image(this.colsX[this.playerCol], this.playerY, 'runner').setScale(2);
+    this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
 
-    // Column letters at top
-    this.letterTexts = this.colsX.map(x => this.add.text(x, 160, '', {
+    // Auto-scale player to ~32px tall (crisp with integer-ish scale for pixel art)
+    const desiredH = 32;
+    const baseH = this.player.height || desiredH;
+    const s = desiredH / baseH;
+    this.player.setScale(s);
+
+    // Column letters
+    this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
       fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
     }).setOrigin(0.5));
 
     // Falling obstacles
     this.obGroup = this.add.group();
-    this.activeObstacles = 0; // for settling after correct press
+    this.activeObstacles = 0;
     this.settling = false;
 
-    // Speed so time-to-player ~= reaction window
+    // Speed: time-to-player ~= reaction window
     this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // px/sec
 
     // Stats
@@ -115,7 +123,7 @@ this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
 
       if (k !== this.greenLetter) { this._endGame('Wrong key!'); return; }
 
-      // Correct: move to safe column, hide green, let reds finish to keyboard then vanish
+      // Correct: move to safe column, hide green label, let reds finish to keyboard then vanish
       this._goToColumn(this.safeCol);
       this.lettersTyped++;
       this._clearWaveTimer();
@@ -182,7 +190,7 @@ this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
     lettersByCol[this.safeCol] = this.greenLetter;
     let wi = 0; [0,1,2].forEach(c => { if (c !== this.safeCol) lettersByCol[c] = wrongs[wi++]; });
 
-    // Paint letters (green/red)
+    // Labels (green/red)
     const GREEN = '#7CFFA1', RED = '#ff5566';
     this.letterTexts.forEach((txt, c) => {
       const isGreen = (c === this.safeCol);
