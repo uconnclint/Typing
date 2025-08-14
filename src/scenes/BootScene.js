@@ -6,6 +6,8 @@ export default class BootScene extends Phaser.Scene {
   preload(){
     // Preload music so we can swap instantly on the menu
     TRACKS.forEach(t => this.load.audio(t.id, [t.url]));
+    // Load the boy sprite
+    this.load.image('boy', 'assets/boy.png');
   }
 
   create(){
