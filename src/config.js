@@ -13,8 +13,9 @@ export const TRACKS = [
   { id: 't2', title: 'Type It Up!',           url: 'assets/Type It Up!.mp3' },
   { id: 't3', title: 'Typing With Attitude',  url: 'assets/Typing With Attitude.mp3' },
   { id: 't4', title: 'home row jam',          url: 'assets/home row jam.mp3' },
-  { id: 't5', title: '8 Bit',         url: 'assets/music.mp3' },
-  { id: 't6', title: 'Imagine Typing',         url: 'assets/Imagine Typing.mp3' }
+  { id: 't5', title: 'Broadway Typing',         url: 'assets/Broadway Typing.mp3' },
+  { id: 't6', title: 'Imagine Typing',         url: 'assets/Imagine Typing.mp3' },
+  { id: 't7', title: 'Type Rap',         url: 'assets/Type Rap.mp3' }
 ];
 
 export function savePrefs() {
