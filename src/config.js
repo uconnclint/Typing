@@ -18,15 +18,32 @@ export const TRACKS = [
   { id: 't7', title: 'Type Rap',         url: 'assets/Type Rap.mp3' }
 ];
 
+// 🧍 Characters — add more by pushing to this array
+// `height` is the on-screen height in pixels (we auto-scale the sprite to this).
+export const CHARACTERS = [
+  { id: 'boy',   title: 'Boy',         url: 'assets/boy.png',         height: 64 },
+  { id: 'girl',  title: 'Gamer Girl',  url: 'assets/gamer girl.png',  height: 64 }
+];
+
 export function savePrefs() {
   localStorage.setItem('kr_mode', GameConfig.mode);
   localStorage.setItem('kr_diff', GameConfig.difficulty);
 }
 
+// Music helpers
 export function getSelectedTrackIndex() {
   const n = parseInt(localStorage.getItem('kr_track_idx') ?? '0', 10);
   return Number.isFinite(n) ? Math.max(0, Math.min(n, TRACKS.length - 1)) : 0;
 }
 export function setSelectedTrackIndex(i) {
   localStorage.setItem('kr_track_idx', String(i));
+}
+
+// Character helpers
+export function getSelectedCharIndex() {
+  const n = parseInt(localStorage.getItem('kr_char_idx') ?? '0', 10);
+  return Number.isFinite(n) ? Math.max(0, Math.min(n, CHARACTERS.length - 1)) : 0;
+}
+export function setSelectedCharIndex(i) {
+  localStorage.setItem('kr_char_idx', String(i));
 }
