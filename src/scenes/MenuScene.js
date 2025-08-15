@@ -35,9 +35,15 @@ export default class MenuScene extends Phaser.Scene {
     this.trackIndex = getSelectedTrackIndex();
     this._button(70, y3, 44, 44, '◀', () => this._changeTrack(-1));
     this._button(370, y3, 44, 44, '▶', () => this._changeTrack(+1));
-    this.trackLabel = this.add.text(130, y3+10, '', {
-      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
-    }).setOrigin(0,0);
+this.trackLabel = this.add.text(130, y3+12, '', {
+  fontFamily: '"Press Start 2P"',
+  fontSize: '14px',
+  color: '#9bd0ff',
+  padding: { top: 6, bottom: 2 }   // ← stops the crop
+}).setOrigin(0,0);
+
+// optional (crisper + sometimes helps metrics):
+this.trackLabel.setResolution(2);
 
     // Start
     this._button(width/2-120, 480, 240, 56, 'START', () => {
