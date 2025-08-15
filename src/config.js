@@ -15,7 +15,14 @@ export const TRACKS = [
   { id: 't4', title: 'home row jam',          url: 'assets/home row jam.mp3' },
   { id: 't5', title: 'Broadway Typing',         url: 'assets/Broadway Typing.mp3' },
   { id: 't6', title: 'Imagine Typing',         url: 'assets/Imagine Typing.mp3' },
-  { id: 't7', title: 'Type Rap',         url: 'assets/Type Rap.mp3' }
+  { id: 't7', title: 'Type Rap',         url: 'assets/Type Rap.mp3' },
+  { id: 't8', title: 'Backstreet Keys',         url: 'assets/Backstreet Keys.mp3' },
+  { id: 't9', title: 'Key Pop',         url: 'assets/Key Pop.mp3' },
+  { id: 't10', title: 'Typing Drama',         url: 'assets/Typing Drama.mp3' },
+  { id: 't11', title: 'Nerdy Typing',         url: 'assets/nerdy typing.mp3' }
+
+
+  
 ];
 
 // 🧍 Characters — add more by pushing to this array
