@@ -1,4 +1,4 @@
-import { GameConfig } from '../config.js';
+import { GameConfig, CHARACTERS, getSelectedCharIndex } from '../config.js';
 import { KEY_POOLS, normalizeKey, isAllowedChar, IGNORE_KEYS } from '../utils/keys.js';
 import { SFX } from '../utils/audio.js';
 import OnScreenKeyboard from '../ui/OnScreenKeyboard.js';
@@ -18,6 +18,7 @@ export default class PlayScene extends Phaser.Scene {
     this.difficulty = data.difficulty || GameConfig.difficulty || 'easy';
     this.pool = KEY_POOLS[this.mode] || KEY_POOLS.mixed;
     this.reaction = GameConfig.times[this.difficulty] || 1.2; // seconds
+    this.charId = data.charId || CHARACTERS[getSelectedCharIndex()].id || 'boy';
   }
 
   create(){
@@ -76,12 +77,13 @@ export default class PlayScene extends Phaser.Scene {
     });
 
     // Player sprite
-    const playerTexture = this.textures.exists('boy') ? 'boy' : 'runner';
-    this.playerCol = 1;
-    this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
-    const desiredH = 64;
-    const baseH = this.player.height || desiredH;
-    this.player.setScale(desiredH / baseH);
+const playerTexture = this.textures.exists(this.charId) ? this.charId : 'runner';
+this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
+// scale to configured height
+const meta = CHARACTERS.find(c => c.id === this.charId);
+const targetH = (meta && meta.height) ? meta.height : 64;
+const baseH = this.player.height || targetH;
+this.player.setScale(targetH / baseH);
 
     // Column letters
     this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
