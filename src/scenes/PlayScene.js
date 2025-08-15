@@ -23,7 +23,8 @@ export default class PlayScene extends Phaser.Scene {
 
   create(){
     const { width, height } = this.scale;
-
+// make sure the camera isn't offset
+this.cameras.main.setScroll(0, 0);
     // BG + header
     this.add.rectangle(0,0,width,height,0x0a0f18).setOrigin(0);
     this.add.rectangle(0,0,width,64,0x1f2640).setOrigin(0);
