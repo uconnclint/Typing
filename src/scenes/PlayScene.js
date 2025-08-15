@@ -77,13 +77,30 @@ export default class PlayScene extends Phaser.Scene {
     });
 
     // Player sprite
-const playerTexture = this.textures.exists(this.charId) ? this.charId : 'runner';
+// --- Player sprite (safe scaling + origin centered) ---
+const playerTexture = this.charId && this.textures.exists(this.charId) ? this.charId : 'boy';
+this.playerCol = 1;
 this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
-// scale to configured height
-const meta = CHARACTERS.find(c => c.id === this.charId);
-const targetH = (meta && meta.height) ? meta.height : 64;
-const baseH = this.player.height || targetH;
-this.player.setScale(targetH / baseH);
+
+// center horizontally, sit on the lane line
+this.player.setOrigin(0.5, 1);
+
+// scale to target height robustly (avoids height=0 issues)
+const meta = (this.sys.game && this.sys.game.config) ? null : null; // ignore
+const targetH = 64; // desired on-screen height; tweak if you want bigger/smaller
+
+const tex = this.textures.get(playerTexture);
+const srcImg = tex && tex.getSourceImage ? tex.getSourceImage() : null;
+const baseH = Math.max(1,
+  (this.player.height || 0),
+  (srcImg && (srcImg.height || srcImg.naturalHeight || 0)) || 0
+);
+const s = Phaser.Math.Clamp(targetH / baseH, 0.25, 6); // clamp so it can’t go crazy large
+this.player.setScale(s);
+
+// hard-set position again after scaling, just in case
+this.player.x = this.colsX[this.playerCol];
+this.player.y = this.playerY;
 
     // Column letters
     this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
