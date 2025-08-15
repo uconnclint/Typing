@@ -60,7 +60,7 @@ export default class PlayScene extends Phaser.Scene {
     const labelY = 160;                 // letter labels sit here
     const guideStartY = labelY + 26;    // start guides BELOW labels (no line behind text)
     this.kbTopY  = this.kb.y;           // top edge of keyboard
-    this.playerY = this.kbTopY - 60;    // runner above keyboard
+    this.playerY = this.kbTopY - 80;    // runner above keyboard
     this.spawnY  = -60;                 // spawn above screen
     this.stopY   = this.kbTopY - 8;     // reds stop right before keyboard
 
@@ -79,7 +79,7 @@ export default class PlayScene extends Phaser.Scene {
     const playerTexture = this.textures.exists('boy') ? 'boy' : 'runner';
     this.playerCol = 1;
     this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
-    const desiredH = 32;
+    const desiredH = 64;
     const baseH = this.player.height || desiredH;
     this.player.setScale(desiredH / baseH);
 
