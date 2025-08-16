@@ -22,19 +22,20 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9db2d0', align:'center'
     }).setOrigin(0.5);
 
-    // ---- Leaderboard (bottom-left) ----
-    const lbLeft = 20;
-    const lbBottom = height - 20; // anchor to bottom
-    this.add.text(lbLeft, lbBottom - 200, 'CLASS TOP 10', {
-      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6}
-    }).setOrigin(0,0); // header sits above list
+// ---- Leaderboard (bottom-right) ----
+const lbRight = width - 20;     // 20px from right edge
+const lbBottom = height - 20;   // 20px from bottom
 
-    this.lbText = this.add.text(lbLeft, lbBottom, 'Loading…', {
-      fontFamily:'"Press Start 2P"', fontSize:'12px', color:'#e6f3ff',
-      align:'left', lineSpacing:6
-    }).setOrigin(0,1); // bottom-left origin so it hugs bottom
-    this._loadLeaderboard();
-    // -----------------------------------
+this.add.text(lbRight, lbBottom - 200, 'CLASS TOP 10', {
+  fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6}
+}).setOrigin(1,0);              // right-aligned header
+
+this.lbText = this.add.text(lbRight, lbBottom, 'Loading…', {
+  fontFamily:'"Press Start 2P"', fontSize:'12px', color:'#e6f3ff',
+  align:'right', lineSpacing:6
+}).setOrigin(1,1);              // anchor bottom-right
+this._loadLeaderboard();
+// ------------------------------------
 
     // Mode picker
     const modes = ['home','top','bottom','mixed'];
