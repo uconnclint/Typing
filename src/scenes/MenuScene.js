@@ -23,17 +23,25 @@ export default class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
 // ---- Leaderboard (bottom-right) ----
-const lbRight = width - 20;     // 20px from right edge
-const lbBottom = height - 20;   // 20px from bottom
+const lbRight  = width - 20;
+const lbBottom = height - 20;
 
-this.add.text(lbRight, lbBottom - 200, 'CLASS TOP 10', {
-  fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6}
-}).setOrigin(1,0);              // right-aligned header
+const headerStyle = {
+  fontFamily: '"Press Start 2P"',
+  fontSize: '14px',
+  color: '#9bd0ff',
+  padding: { top: 8, bottom: 2 } // <-- stop top clipping
+};
+
+this.add.text(lbRight, lbBottom - 196, 'CLASS TOP 10', headerStyle)
+  .setOrigin(1, 0)
+  .setResolution(2);              // crisper + helps metrics
 
 this.lbText = this.add.text(lbRight, lbBottom, 'Loading…', {
   fontFamily:'"Press Start 2P"', fontSize:'12px', color:'#e6f3ff',
   align:'right', lineSpacing:6
-}).setOrigin(1,1);              // anchor bottom-right
+}).setOrigin(1,1);
+
 this._loadLeaderboard();
 // ------------------------------------
 
