@@ -2,6 +2,7 @@ import { GameConfig, CHARACTERS, getSelectedCharIndex } from '../config.js';
 import { KEY_POOLS, normalizeKey, isAllowedChar, IGNORE_KEYS } from '../utils/keys.js';
 import { SFX } from '../utils/audio.js';
 import OnScreenKeyboard from '../ui/OnScreenKeyboard.js';
+import { TRACKS, getSelectedTrackIndex } from '../config.js';
 
 export default class PlayScene extends Phaser.Scene {
   constructor(){ super('play'); }
@@ -324,4 +325,9 @@ this.player.y = this.playerY;
   }
 
   shutdown(){ window.removeEventListener('keydown', this.keyHandler); this._clearWaveTimer(); }
+}
+shutdown(){ 
+  window.removeEventListener('keydown', this.keyHandler); 
+  this._clearWaveTimer(); 
+  this.music?.stop(); // stop game music when leaving the scene
 }
