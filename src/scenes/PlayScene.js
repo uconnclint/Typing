@@ -1,16 +1,14 @@
-import { GameConfig, CHARACTERS, getSelectedCharIndex } from '../config.js';
+import { GameConfig, CHARACTERS, getSelectedCharIndex, TRACKS, getSelectedTrackIndex } from '../config.js';
 import { KEY_POOLS, normalizeKey, isAllowedChar, IGNORE_KEYS } from '../utils/keys.js';
 import { SFX } from '../utils/audio.js';
 import OnScreenKeyboard from '../ui/OnScreenKeyboard.js';
-import { TRACKS, getSelectedTrackIndex } from '../config.js';
 
 export default class PlayScene extends Phaser.Scene {
   constructor(){ super('play'); }
 
-  // Load boy.png here if BootScene didn't already
   preload(){
     if (!this.textures.exists('boy')) {
-      this.load.image('boy', 'assets/boy.png'); // put your file at /assets/boy.png
+      this.load.image('boy', 'assets/boy.png');
     }
   }
 
@@ -18,14 +16,16 @@ export default class PlayScene extends Phaser.Scene {
     this.mode = data.mode || GameConfig.mode || 'mixed';
     this.difficulty = data.difficulty || GameConfig.difficulty || 'easy';
     this.pool = KEY_POOLS[this.mode] || KEY_POOLS.mixed;
-    this.reaction = GameConfig.times[this.difficulty] || 1.2; // seconds
+    this.reaction = GameConfig.times[this.difficulty] || 1.2;
     this.charId = data.charId || CHARACTERS[getSelectedCharIndex()].id || 'boy';
   }
 
   create(){
     const { width, height } = this.scale;
-// make sure the camera isn't offset
-this.cameras.main.setScroll(0, 0);
+
+    // Ensure camera origin
+    this.cameras.main.setScroll(0, 0);
+
     // BG + header
     this.add.rectangle(0,0,width,height,0x0a0f18).setOrigin(0);
     this.add.rectangle(0,0,width,64,0x1f2640).setOrigin(0);
@@ -46,6 +46,15 @@ this.cameras.main.setScroll(0, 0);
       });
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
+    // Start selected background track in-game
+    const trk = TRACKS[getSelectedTrackIndex()];
+    if (trk) {
+      if (this.music && this.music.isPlaying) this.music.stop();
+      this.music = this.sound.get(trk.id) || this.sound.add(trk.id, { loop: true, volume: 0.25 });
+      if (!this.music.isPlaying) this.music.play();
+      this.sound.mute = (localStorage.getItem('kr_muted')==='1');
+    }
+
     // On-screen keyboard FIRST (for layout)
     this.kb = new OnScreenKeyboard(this);
     this.add.existing(this.kb);
@@ -54,55 +63,46 @@ this.cameras.main.setScroll(0, 0);
     const margin = 20;
     const avail = width - margin*2;
     const scale = Math.min(1, avail / kbW);
-    if (typeof this.kb.setScale === 'function') { this.kb.setScale(scale); }
+    if (typeof this.kb.setScale === 'function') this.kb.setScale(scale);
     else { this.kb.scaleX = scale; this.kb.scaleY = scale; }
     this.kb.x = Math.round((width - kbW * scale) / 2);
     this.kb.y = Math.round(height - (kbH * scale) - margin);
 
     // Layout Ys
-    const labelY = 160;                 // letter labels sit here
-    const guideStartY = labelY + 26;    // start guides BELOW labels (no line behind text)
-    this.kbTopY  = this.kb.y;           // top edge of keyboard
-    this.playerY = this.kbTopY - 80;    // runner above keyboard
-    this.spawnY  = -60;                 // spawn above screen
-    this.stopY   = this.kbTopY - 8;     // reds stop right before keyboard
+    const labelY = 160;
+    const guideStartY = labelY + 26;
+    this.kbTopY  = this.kb.y;
+    this.playerY = this.kbTopY - 80;
+    this.spawnY  = -60;
+    this.stopY   = this.kbTopY - 8;
 
     // Columns (x positions)
     const centerX = width / 2;
     const colOffset = 160;
     this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-    // Column guides (down to keyboard top; no ladder rungs)
+    // Column guides (down to keyboard top)
     this.colsX.forEach(x=>{
       const h = Math.max(0, this.kbTopY - guideStartY);
       this.add.rectangle(x, guideStartY, 4, h, 0x29344a).setOrigin(0.5,0);
     });
 
-    // Player sprite
-// --- Player sprite (safe scaling + origin centered) ---
-const playerTexture = this.charId && this.textures.exists(this.charId) ? this.charId : 'boy';
-this.playerCol = 1;
-this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture);
+    // Player sprite (safe scaling)
+    const playerTexture = (this.charId && this.textures.exists(this.charId)) ? this.charId : 'boy';
+    this.playerCol = 1;
+    this.player = this.add.image(this.colsX[this.playerCol], this.playerY, playerTexture).setOrigin(0.5,1);
 
-// center horizontally, sit on the lane line
-this.player.setOrigin(0.5, 1);
-
-// scale to target height robustly (avoids height=0 issues)
-const meta = (this.sys.game && this.sys.game.config) ? null : null; // ignore
-const targetH = 64; // desired on-screen height; tweak if you want bigger/smaller
-
-const tex = this.textures.get(playerTexture);
-const srcImg = tex && tex.getSourceImage ? tex.getSourceImage() : null;
-const baseH = Math.max(1,
-  (this.player.height || 0),
-  (srcImg && (srcImg.height || srcImg.naturalHeight || 0)) || 0
-);
-const s = Phaser.Math.Clamp(targetH / baseH, 0.25, 6); // clamp so it can’t go crazy large
-this.player.setScale(s);
-
-// hard-set position again after scaling, just in case
-this.player.x = this.colsX[this.playerCol];
-this.player.y = this.playerY;
+    const tex = this.textures.get(playerTexture);
+    const srcImg = tex && tex.getSourceImage ? tex.getSourceImage() : null;
+    const baseH = Math.max(1,
+      (this.player.height || 0),
+      (srcImg && (srcImg.height || srcImg.naturalHeight || 0)) || 0
+    );
+    const targetH = 64;
+    const s = Phaser.Math.Clamp(targetH / baseH, 0.25, 6);
+    this.player.setScale(s);
+    this.player.x = this.colsX[this.playerCol];
+    this.player.y = this.playerY;
 
     // Column letters
     this.letterTexts = this.colsX.map(x => this.add.text(x, labelY, '', {
@@ -115,7 +115,7 @@ this.player.y = this.playerY;
     this.settling = false;
 
     // Speed: time-to-player ~= reaction window
-    this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // px/sec
+    this.dropSpeed = (this.playerY - this.spawnY) / this.reaction;
 
     // Stats
     this.lettersTyped = 0;
@@ -123,17 +123,16 @@ this.player.y = this.playerY;
     this.gameOver = false;
     this.paused = false;
 
-    // ===== READY COUNTDOWN (3s) =====
+    // READY COUNTDOWN (3s)
     this.ready = false;
     this.countNum = 3;
     this.countText = this.add.text(width/2, this.playerY - 80, '3', {
       fontFamily:'"Press Start 2P"', fontSize:'48px', color:'#ffffff'
     }).setOrigin(0.5).setAlpha(0.95);
 
-    // tick once per second: 3,2,1,GO
     this.time.addEvent({
       delay: 1000,
-      repeat: 3, // fires 4 times total
+      repeat: 3,
       callback: () => {
         if (this.countNum > 1) {
           this.countNum--;
@@ -144,14 +143,12 @@ this.player.y = this.playerY;
           this.countText.setText('GO!');
           SFX.ok();
         } else {
-          // countdown finished -> start first wave
           this.countText.destroy();
           this.ready = true;
           this._nextWave();
         }
       }
     });
-    // ===== END COUNTDOWN =====
 
     // Input
     this.keyHandler = (e)=>{
@@ -165,16 +162,14 @@ this.player.y = this.playerY;
 
       const k = normalizeKey(e.key);
       if (!k || !isAllowedChar(k)) return;
-
       if (k !== this.greenLetter) { this._endGame('Wrong key!'); return; }
 
-      // Correct: move to safe column, hide green label, let reds finish to keyboard then vanish
+      // Correct: move to safe column, hide green label, let reds finish
       this._goToColumn(this.safeCol);
       this.lettersTyped++;
       this._clearWaveTimer();
       this.settling = true;
-      this.letterTexts[this.safeCol].setText(''); // hide green
-    
+      this.letterTexts[this.safeCol].setText('');
 
       if (this.activeObstacles === 0) {
         this.settling = false;
@@ -182,6 +177,16 @@ this.player.y = this.playerY;
       }
     };
     window.addEventListener('keydown', this.keyHandler);
+
+    // ensure cleanup on scene stop/destroy
+    this.events.once('shutdown', () => this._cleanup());
+    this.events.once('destroy',  () => this._cleanup());
+  }
+
+  _cleanup(){
+    window.removeEventListener('keydown', this.keyHandler);
+    this._clearWaveTimer();
+    if (this.music && this.music.isPlaying) this.music.stop();
   }
 
   _togglePause(){
@@ -194,7 +199,8 @@ this.player.y = this.playerY;
         fontFamily:'"Press Start 2P"', fontSize:'18px', color:'#ffffff', align:'center'
       }).setOrigin(0.5);
     } else {
-      this.pauseOverlay?.destroy(); this.pauseText?.destroy();
+      if (this.pauseOverlay) this.pauseOverlay.destroy();
+      if (this.pauseText) this.pauseText.destroy();
       if (!this.settling && this.ready) this._startWaveTimer();
     }
   }
@@ -222,7 +228,7 @@ this.player.y = this.playerY;
   }
 
   _nextWave(){
-    if (!this.ready) return; // don't spawn during countdown
+    if (!this.ready) return;
 
     this._clearObstacles();
     this._clearWaveTimer();
@@ -298,6 +304,7 @@ this.player.y = this.playerY;
     this.gameOver = true;
     this._clearWaveTimer();
     SFX.bad();
+
     window.removeEventListener('keydown', this.keyHandler);
 
     const timeSec = Math.max(0, (this.time.now - this.startTime)/1000);
@@ -323,12 +330,4 @@ this.player.y = this.playerY;
     this.letText.setText(`LETTERS ${this.lettersTyped}`);
     this.scoreText.setText(`SCORE ${score}`);
   }
-
-  shutdown(){ window.removeEventListener('keydown', this.keyHandler); this._clearWaveTimer(); }
-}
-shutdown(){ 
-  window.removeEventListener('keydown', this.keyHandler); 
-  this._clearWaveTimer(); 
-  this.music?.stop(); // stop game music when leaving the scene
-}
 }
