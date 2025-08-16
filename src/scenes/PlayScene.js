@@ -331,3 +331,4 @@ shutdown(){
   this._clearWaveTimer(); 
   this.music?.stop(); // stop game music when leaving the scene
 }
+}
