@@ -45,7 +45,8 @@ export function getSelectedTrackIndex() {
 export function setSelectedTrackIndex(i) {
   localStorage.setItem('kr_track_idx', String(i));
 }
-
+  export const REMOTE_LB_URL =
+  'https://script.google.com/macros/s/AKfycbx_yj2WazYtxadLvQiEphfweughwsWnuBu_pTh6np6rA-UvdHqVJU7j55Ta0bEZUjCC/exec';
 // Character helpers
 export function getSelectedCharIndex() {
   const n = parseInt(localStorage.getItem('kr_char_idx') ?? '0', 10);
@@ -54,6 +55,5 @@ export function getSelectedCharIndex() {
 export function setSelectedCharIndex(i) {
   localStorage.setItem('kr_char_idx', String(i));
 
-  export const REMOTE_LB_URL =
-  'https://script.google.com/macros/s/AKfycbx_yj2WazYtxadLvQiEphfweughwsWnuBu_pTh6np6rA-UvdHqVJU7j55Ta0bEZUjCC/exec';
+
 }
