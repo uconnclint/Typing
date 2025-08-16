@@ -22,18 +22,19 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9db2d0', align:'center'
     }).setOrigin(0.5);
 
-    // ---- Leaderboard (top-right) ----
-    this.add.text(width - 220, 150, 'CLASS TOP 10', {
+    // ---- Leaderboard (bottom-left) ----
+    const lbLeft = 20;
+    const lbBottom = height - 20; // anchor to bottom
+    this.add.text(lbLeft, lbBottom - 200, 'CLASS TOP 10', {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6}
-    }).setOrigin(0.5,0);
+    }).setOrigin(0,0); // header sits above list
 
-    this.lbText = this.add.text(width - 220, 178, 'Loading…', {
+    this.lbText = this.add.text(lbLeft, lbBottom, 'Loading…', {
       fontFamily:'"Press Start 2P"', fontSize:'12px', color:'#e6f3ff',
       align:'left', lineSpacing:6
-    }).setOrigin(0.5,0);
-
-    this._loadLeaderboard();  // kicks off fetch + auto-refresh
-    // --------------------------------
+    }).setOrigin(0,1); // bottom-left origin so it hugs bottom
+    this._loadLeaderboard();
+    // -----------------------------------
 
     // Mode picker
     const modes = ['home','top','bottom','mixed'];
@@ -51,7 +52,7 @@ export default class MenuScene extends Phaser.Scene {
       GameConfig.difficulty = d; SFX.tick(); this._refresh();
     }));
 
-    // Character picker + preview
+    // Character picker + preview (right side)
     const y3 = 410;
     this.add.text(70, y3-32, 'Character', {fontFamily:'"Press Start 2P"', fontSize:'16px', color:'#cfe4ff'});
     this.charIndex = getSelectedCharIndex();
@@ -61,7 +62,6 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6,bottom:2}
     }).setOrigin(0,0);
 
-    // live preview sprite (right side, below leaderboard)
     const previewY = 420;
     this.charPreview = this.add.image(width - 160, previewY, CHARACTERS[this.charIndex].id).setOrigin(0.5,1);
     this._fitPreview();
@@ -80,6 +80,7 @@ export default class MenuScene extends Phaser.Scene {
     this._button(width/2-120, 560, 240, 56, 'START', () => {
       savePrefs(); SFX.ok();
       const charId = CHARACTERS[this.charIndex].id;
+      // stop menu preview so Play can start clean
       if (this.music && this.music.isPlaying) this.music.stop();
       this.scene.start('play', { mode: GameConfig.mode, difficulty: GameConfig.difficulty, charId });
     });
@@ -113,8 +114,7 @@ export default class MenuScene extends Phaser.Scene {
     }catch{
       this.lbText.setText('Could not load.');
     }
-    // refresh every 20s
-    this.time.delayedCall(20000, ()=> this._loadLeaderboard());
+    this.time.delayedCall(20000, ()=> this._loadLeaderboard()); // refresh every 20s
   }
 
   // --- Character helpers ---
