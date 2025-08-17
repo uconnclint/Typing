@@ -3,12 +3,20 @@ import { TRACKS, CHARACTERS } from '../config.js';
 export default class BootScene extends Phaser.Scene {
   constructor(){ super('boot'); }
 
-  preload(){
-    // Music
-    TRACKS.forEach(t => this.load.audio(t.id, [t.url]));
-    // Characters
-    CHARACTERS.forEach(c => this.load.image(c.id, c.url));
-  }
+import { TRACKS, CHARACTERS } from '../config.js';
+
+preload(){
+  // Load music (handles spaces/! fine)
+  TRACKS.forEach(t => this.load.audio(t.id, t.url));
+
+  // Make sure character images are ready too
+  CHARACTERS.forEach(c => {
+    if (!this.textures.exists(c.id)) this.load.image(c.id, c.url);
+  });
+
+  // Optional: log any asset that fails to load
+  this.load.on('loaderror', file => console.warn('Load error:', file.key, file.src));
+}
 
   create(){
     const g = this.add.graphics();
