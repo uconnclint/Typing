@@ -12,7 +12,7 @@ export const TRACKS = [
   { id: 't1', title: 'Type All Day',          url: 'assets/Type All Day.mp3' },
   { id: 't2', title: 'Type It Up!',           url: 'assets/Type It Up!.mp3' },
   { id: 't3', title: 'Typing It UP',  url: 'assets/Typing With Attitude.mp3' },
-  { id: 't4', title: 'home row',          url: 'assets/home row jam.mp3' },
+  { id: 't4', title: 'HR Jam',          url: 'assets/home row jam.mp3' },
   { id: 't5', title: 'Broadway Typing',         url: 'assets/Broadway Typing.mp3' },
   { id: 't6', title: 'Imagine Typing',         url: 'assets/Imagine Typing.mp3' },
   { id: 't7', title: 'Type Rap',         url: 'assets/Type Rap.mp3' },
@@ -20,9 +20,10 @@ export const TRACKS = [
   { id: 't9', title: 'Key Pop',         url: 'assets/Key Pop.mp3' },
   { id: 't10', title: 'Typing Drama',         url: 'assets/Typing Drama.mp3' },
   { id: 't11', title: 'Qwerty',         url: 'assets/QWERTY.mp3' },
-  { id: 't11', title: 'Top Row',         url: 'assets/Top Row.mp3' },
-  { id: 't11', title: 'Bottom Row',         url: 'assets/Bottom Row.mp3' },
-  { id: 't11', title: 'Touch Type',         url: 'assets/Touch Type.mp3' }
+  { id: 't12', title: 'Top Row',         url: 'assets/Top Row.mp3' },
+  { id: 't13', title: 'Bottom Row',         url: 'assets/Bottom Row.mp3' },
+  { id: 't14', title: 'Touch Type',         url: 'assets/Touch Type.mp3' },
+  { id: 't15', title: 'Home Row',          url: 'assets/Home Row.mp3' }
 
 
   
