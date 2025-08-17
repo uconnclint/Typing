@@ -16,7 +16,12 @@ export default class PlayScene extends Phaser.Scene {
     this.mode = data.mode || GameConfig.mode || 'mixed';
     this.difficulty = data.difficulty || GameConfig.difficulty || 'easy';
     this.pool = KEY_POOLS[this.mode] || KEY_POOLS.mixed;
-    this.reaction = GameConfig.times[this.difficulty] || 1.2;
+// NEW (+2s buffer, and stash base)
+    this.baseReaction = (GameConfig.times[this.difficulty] || 1.2) + 2;
+    this.reaction = this.baseReaction;    
+    this.rampEvery = 5;     // every 5 correct
+    this.rampStep  = 0.20;  // shave off 0.20s each ramp
+    this.minReaction = 0.80; // never go below 0.8s
     this.charId = data.charId || CHARACTERS[getSelectedCharIndex()].id || 'boy';
   }
 
