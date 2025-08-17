@@ -172,6 +172,11 @@ export default class PlayScene extends Phaser.Scene {
       // Correct: move to safe column, hide green label, let reds finish
       this._goToColumn(this.safeCol);
       this.lettersTyped++;
+      // Every 5 correct: shrink reaction a bit and re-derive fall speed
+if (this.lettersTyped % this.rampEvery === 0) {
+  this.reaction = Math.max(this.minReaction, this.reaction - this.rampStep);
+  this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // used by next wave
+}
       this._clearWaveTimer();
       this.settling = true;
       this.letterTexts[this.safeCol].setText('');
