@@ -12,7 +12,7 @@ export default class MenuScene extends Phaser.Scene {
   create(){
     const { width, height } = this.scale;
 
-    // Background + header
+    // BG + header
     this.add.rectangle(0,0,width,height,0x0d1220).setOrigin(0);
     this.add.rectangle(0,0,width,140,0x1f2640).setOrigin(0);
     this.add.text(width/2, 70, 'KEY RUNNER', {
@@ -22,28 +22,22 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9db2d0', align:'center'
     }).setOrigin(0.5);
 
-// ---- Leaderboard (bottom-right) ----
-const lbRight  = width - 20;
-const lbBottom = height - 20;
+    // ---- Leaderboard (bottom-right) ----
+    const lbRight  = width - 20;
+    const lbBottom = height - 20;
 
-const headerStyle = {
-  fontFamily: '"Press Start 2P"',
-  fontSize: '14px',
-  color: '#9bd0ff',
-  padding: { top: 8, bottom: 2 } // <-- stop top clipping
-};
+    this.add.text(lbRight, lbBottom - 196, 'CLASS TOP 10', {
+      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff',
+      padding:{ top:8, bottom:2 }
+    }).setOrigin(1,0).setResolution(2);
 
-this.add.text(lbRight, lbBottom - 196, 'CLASS TOP 10', headerStyle)
-  .setOrigin(1, 0)
-  .setResolution(2);              // crisper + helps metrics
+    this.lbText = this.add.text(lbRight, lbBottom, 'Loading…', {
+      fontFamily:'"Press Start 2P"', fontSize:'12px', color:'#e6f3ff',
+      align:'right', lineSpacing:6
+    }).setOrigin(1,1);
 
-this.lbText = this.add.text(lbRight, lbBottom, 'Loading…', {
-  fontFamily:'"Press Start 2P"', fontSize:'12px', color:'#e6f3ff',
-  align:'right', lineSpacing:6
-}).setOrigin(1,1);
-
-this._loadLeaderboard();
-// ------------------------------------
+    this._loadLeaderboard();
+    // ------------------------------------
 
     // Mode picker
     const modes = ['home','top','bottom','mixed'];
@@ -61,18 +55,18 @@ this._loadLeaderboard();
       GameConfig.difficulty = d; SFX.tick(); this._refresh();
     }));
 
-    // Character picker + preview (right side)
+    // Character picker + preview
     const y3 = 410;
     this.add.text(70, y3-32, 'Character', {fontFamily:'"Press Start 2P"', fontSize:'16px', color:'#cfe4ff'});
     this.charIndex = getSelectedCharIndex();
     this._button(70, y3, 44, 44, '◀', () => this._changeChar(-1));
     this._button(370, y3, 44, 44, '▶', () => this._changeChar(+1));
     this.charLabel = this.add.text(130, y3+10, '', {
-      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6,bottom:2}
+      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
     }).setOrigin(0,0);
 
-    const previewY = 420;
-    this.charPreview = this.add.image(width - 160, previewY, CHARACTERS[this.charIndex].id).setOrigin(0.5,1);
+    // Preview sprite on right
+    this.charPreview = this.add.image(width - 160, 420, CHARACTERS[this.charIndex].id).setOrigin(0.5,1);
     this._fitPreview();
 
     // Music picker
@@ -82,15 +76,14 @@ this._loadLeaderboard();
     this._button(70, y4, 44, 44, '◀', () => this._changeTrack(-1));
     this._button(370, y4, 44, 44, '▶', () => this._changeTrack(+1));
     this.trackLabel = this.add.text(130, y4+12, '', {
-      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff', padding:{top:6,bottom:2}
+      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
     }).setOrigin(0,0);
 
-    // Start button
+    // Start
     this._button(width/2-120, 560, 240, 56, 'START', () => {
       savePrefs(); SFX.ok();
       const charId = CHARACTERS[this.charIndex].id;
-      // stop menu preview so Play can start clean
-      if (this.music && this.music.isPlaying) this.music.stop();
+      if (this.music && this.music.isPlaying) this.music.stop(); // stop preview
       this.scene.start('play', { mode: GameConfig.mode, difficulty: GameConfig.difficulty, charId });
     });
 
@@ -104,10 +97,14 @@ this._loadLeaderboard();
       });
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
-    // Initialize labels + start music preview
+    // Init labels + kick off preview
     this._refresh();
     this._changeTrack(0);
     this._changeChar(0);
+
+    // Clean up preview if leaving scene
+    this.events.once('shutdown', ()=> { try{ this.music && this.music.stop(); }catch(e){} });
+    this.events.once('destroy',  ()=> { try{ this.music && this.music.stop(); }catch(e){} });
   }
 
   // --- Leaderboard fetch + auto-refresh ---
@@ -144,19 +141,33 @@ this._loadLeaderboard();
     SFX.tick();
   }
 
-  // --- Music helpers ---
+  // --- Music helpers (robust; avoids preview errors) ---
   _changeTrack(delta){
     this.trackIndex = (this.trackIndex + delta + TRACKS.length) % TRACKS.length;
     setSelectedTrackIndex(this.trackIndex);
-    const meta = TRACKS[this.trackIndex];
-    this.trackLabel.setText(meta.title.toUpperCase());
 
-    if (this.music && this.music.isPlaying) this.music.stop();
+    const meta = TRACKS[this.trackIndex];
+    if (this.trackLabel) this.trackLabel.setText(meta.title.toUpperCase());
+
+    // Stop previous preview
+    try { if (this.music && this.music.isPlaying) this.music.stop(); } catch(e){}
+
+    // Ensure audio is available; if not, load and retry once
+    if (!this.cache.audio.exists(meta.id)) {
+      this.load.audio(meta.id, meta.url);
+      this.load.once('complete', () => this._changeTrack(0));
+      this.load.start();
+      return;
+    }
+
+    // Add or reuse, then play; swallow autoplay/promise issues
     let snd = this.sound.get(meta.id);
     if (!snd) snd = this.sound.add(meta.id, { loop: true, volume: 0.25 });
-    snd.play();
+    const p = snd.play();
+    if (p && typeof p.catch === 'function') p.catch(()=>{});
     this.music = snd;
-    this.sound.mute = SFX.muted;
+
+    this.sound.mute = (localStorage.getItem('kr_muted')==='1');
   }
 
   // --- UI helpers ---
