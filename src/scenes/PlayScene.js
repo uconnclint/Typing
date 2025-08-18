@@ -291,7 +291,7 @@ export default class PlayScene extends Phaser.Scene {
     });
 
     // Highlight correct key
-    this.kb.highlight(this.greenLetter);
+    this.kb.highlight(this.greenLetter, 0x7CFFA1);
 
     // Durations based on current dropSpeed
     const toPlayerDur = ((this.playerY - this.spawnY) / this.dropSpeed) * 1000;
