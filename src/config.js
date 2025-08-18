@@ -34,7 +34,7 @@ export const TRACKS = [
 export const CHARACTERS = [
   { id: 'boy',   title: 'Gamer Boy',         url: 'assets/boy.png',         height: 64 },
   { id: 'girl',  title: 'Gamer Girl',  url: 'assets/gamer girl.png',  height: 64 },
-  { id: 'easty',  title: 'Easty',  url: 'assets/easty.png',  height: 16}  
+  { id: 'easty',  title: 'Easty',  url: 'assets/easty.png',  height: 64}  
 ];
 
 export function savePrefs() {
