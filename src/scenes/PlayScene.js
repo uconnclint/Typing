@@ -7,6 +7,7 @@ export default class PlayScene extends Phaser.Scene {
   constructor(){ super('play'); }
 
   preload(){
+    // Fallback sprite if a character texture isn't already loaded
     if (!this.textures.exists('boy')) {
       this.load.image('boy', 'assets/boy.png');
     }
@@ -16,19 +17,19 @@ export default class PlayScene extends Phaser.Scene {
     this.mode = data.mode || GameConfig.mode || 'mixed';
     this.difficulty = data.difficulty || GameConfig.difficulty || 'easy';
     this.pool = KEY_POOLS[this.mode] || KEY_POOLS.mixed;
-// NEW (+2s buffer, and stash base)
+
+    // +2s base buffer; store knobs for the difficulty ramp
     this.baseReaction = (GameConfig.times[this.difficulty] || 1.2) + 2;
-    this.reaction = this.baseReaction;    
-    this.rampEvery = 5;     // every 5 correct
-    this.rampStep  = 0.20;  // shave off 0.20s each ramp
-    this.minReaction = 0.80; // never go below 0.8s
+    this.reaction     = this.baseReaction;
+    this.rampEvery    = 5;     // every 5 correct
+    this.rampStep     = 0.20;  // remove 0.20s each ramp
+    this.minReaction  = 0.80;  // clamp floor
+
     this.charId = data.charId || CHARACTERS[getSelectedCharIndex()].id || 'boy';
   }
 
   create(){
     const { width, height } = this.scale;
-
-    // Ensure camera origin
     this.cameras.main.setScroll(0, 0);
 
     // BG + header
@@ -51,16 +52,10 @@ export default class PlayScene extends Phaser.Scene {
       });
     this.sound.mute = (localStorage.getItem('kr_muted')==='1');
 
-    // Start selected background track in-game
-    const trk = TRACKS[getSelectedTrackIndex()];
-    if (trk) {
-      if (this.music && this.music.isPlaying) this.music.stop();
-      this.music = this.sound.get(trk.id) || this.sound.add(trk.id, { loop: true, volume: 0.25 });
-      if (!this.music.isPlaying) this.music.play();
-      this.sound.mute = (localStorage.getItem('kr_muted')==='1');
-    }
+    // 🎵 Start playlist from the selected song
+    this._startPlaylist(getSelectedTrackIndex());
 
-    // On-screen keyboard FIRST (for layout)
+    // On-screen keyboard (for layout)
     this.kb = new OnScreenKeyboard(this);
     this.add.existing(this.kb);
     const kbW = this.kb.totalWidth || 460;
@@ -75,7 +70,7 @@ export default class PlayScene extends Phaser.Scene {
 
     // Layout Ys
     const labelY = 160;
-    const guideStartY = labelY + 26;
+    const guideStartY = labelY + 26;  // keep the line below letters
     this.kbTopY  = this.kb.y;
     this.playerY = this.kbTopY - 80;
     this.spawnY  = -60;
@@ -86,7 +81,7 @@ export default class PlayScene extends Phaser.Scene {
     const colOffset = 160;
     this.colsX = [centerX - colOffset, centerX, centerX + colOffset];
 
-    // Column guides (down to keyboard top)
+    // Column guides
     this.colsX.forEach(x=>{
       const h = Math.max(0, this.kbTopY - guideStartY);
       this.add.rectangle(x, guideStartY, 4, h, 0x29344a).setOrigin(0.5,0);
@@ -114,7 +109,7 @@ export default class PlayScene extends Phaser.Scene {
       fontFamily:'"Press Start 2P"', fontSize:'20px', color:'#ffffff'
     }).setOrigin(0.5));
 
-    // Falling obstacles
+    // Obstacles group
     this.obGroup = this.add.group();
     this.activeObstacles = 0;
     this.settling = false;
@@ -128,7 +123,7 @@ export default class PlayScene extends Phaser.Scene {
     this.gameOver = false;
     this.paused = false;
 
-    // READY COUNTDOWN (3s)
+    // READY COUNTDOWN (3 → 2 → 1 → GO)
     this.ready = false;
     this.countNum = 3;
     this.countText = this.add.text(width/2, this.playerY - 80, '3', {
@@ -172,11 +167,13 @@ export default class PlayScene extends Phaser.Scene {
       // Correct: move to safe column, hide green label, let reds finish
       this._goToColumn(this.safeCol);
       this.lettersTyped++;
-      // Every 5 correct: shrink reaction a bit and re-derive fall speed
-if (this.lettersTyped % this.rampEvery === 0) {
-  this.reaction = Math.max(this.minReaction, this.reaction - this.rampStep);
-  this.dropSpeed = (this.playerY - this.spawnY) / this.reaction; // used by next wave
-}
+
+      // Ramp: every 5 correct shrink reaction window a bit (next wave)
+      if (this.lettersTyped % this.rampEvery === 0) {
+        this.reaction = Math.max(this.minReaction, this.reaction - this.rampStep);
+        this.dropSpeed = (this.playerY - this.spawnY) / this.reaction;
+      }
+
       this._clearWaveTimer();
       this.settling = true;
       this.letterTexts[this.safeCol].setText('');
@@ -188,15 +185,47 @@ if (this.lettersTyped % this.rampEvery === 0) {
     };
     window.addEventListener('keydown', this.keyHandler);
 
-    // ensure cleanup on scene stop/destroy
+    // Cleanup on exit
     this.events.once('shutdown', () => this._cleanup());
     this.events.once('destroy',  () => this._cleanup());
   }
 
+  // ===== Playlist helpers =====
+  _startPlaylist(startIdx){
+    if (!TRACKS || !TRACKS.length) return;
+    this.currentTrack = ((startIdx|0) + TRACKS.length) % TRACKS.length;
+    this._playCurrentTrack();
+  }
+
+  _playCurrentTrack(){
+    if (!TRACKS || !TRACKS.length) return;
+    const meta = TRACKS[this.currentTrack];
+    if (!meta) return;
+
+    // stop previous safely
+    try { if (this.music && this.music.isPlaying) this.music.stop(); } catch(e){}
+
+    // ensure sound exists
+    let snd = this.sound.get(meta.id);
+    if (!snd) snd = this.sound.add(meta.id, { volume: 0.25 });
+
+    // when finished, advance to next and play again
+    snd.once('complete', () => {
+      this.currentTrack = (this.currentTrack + 1) % TRACKS.length;
+      this._playCurrentTrack();
+    });
+
+    const p = snd.play({ loop: false });
+    if (p && typeof p.catch === 'function') p.catch(()=>{});
+    this.music = snd;
+    this.sound.mute = (localStorage.getItem('kr_muted')==='1');
+  }
+  // ============================
+
   _cleanup(){
     window.removeEventListener('keydown', this.keyHandler);
     this._clearWaveTimer();
-    if (this.music && this.music.isPlaying) this.music.stop();
+    try { if (this.music && this.music.isPlaying) this.music.stop(); } catch(e){}
   }
 
   _togglePause(){
@@ -264,7 +293,7 @@ if (this.lettersTyped % this.rampEvery === 0) {
     // Highlight correct key
     this.kb.highlight(this.greenLetter);
 
-    // Durations
+    // Durations based on current dropSpeed
     const toPlayerDur = ((this.playerY - this.spawnY) / this.dropSpeed) * 1000;
     const toStopDur   = ((this.stopY   - this.playerY) / this.dropSpeed) * 1000;
 
