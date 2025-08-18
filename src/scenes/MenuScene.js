@@ -18,9 +18,17 @@ export default class MenuScene extends Phaser.Scene {
     this.add.text(width/2, 70, 'KEY RUNNER', {
       fontFamily:'"Press Start 2P"', fontSize:'34px', color:'#e6f3ff'
     }).setOrigin(0.5);
-    this.add.text(width/2, 150, 'Type the green letter before time runs out. Wrong key ends the run.', {
-      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9db2d0', align:'center'
-    }).setOrigin(0.5);
+// Directions (avoid clipping)
+const descStyle = {
+  fontFamily: '"Press Start 2P"',
+  fontSize: '14px',
+  color: '#9db2d0',
+  align: 'center',
+  padding: { top: 8, bottom: 2 }   // <-- extra headroom
+};
+this.add.text(width/2, 152, 'Type the green letter before time runs out. Wrong key ends the run.', descStyle)
+  .setOrigin(0.5, 0)   // <-- top-anchored, not centered vertically
+  .setResolution(2);   // <-- crisper & better metrics
 
     // ---- Leaderboard (bottom-right) ----
     const lbRight  = width - 20;
