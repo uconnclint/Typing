@@ -32,8 +32,9 @@ export const TRACKS = [
 // 🧍 Characters — add more by pushing to this array
 // `height` is the on-screen height in pixels (we auto-scale the sprite to this).
 export const CHARACTERS = [
-  { id: 'boy',   title: 'Boy',         url: 'assets/boy.png',         height: 64 },
-  { id: 'girl',  title: 'Gamer Girl',  url: 'assets/gamer girl.png',  height: 64 }
+  { id: 'boy',   title: 'Gamer Boy',         url: 'assets/boy.png',         height: 64 },
+  { id: 'girl',  title: 'Gamer Girl',  url: 'assets/gamer girl.png',  height: 64 },
+  { id: 'easty',  title: 'Easty',  url: 'assets/easty.png',  height: 64 },  
 ];
 
 export function savePrefs() {
