@@ -4,30 +4,35 @@ export default class BootScene extends Phaser.Scene {
   constructor(){ super('boot'); }
 
   preload(){
-    // --- Preload all music (handles spaces/! just fine) ---
-    TRACKS.forEach(t => this.load.audio(t.id, t.url));
+    // --- Music (supports single URL or [ogg, mp3] array) ---
+    TRACKS.forEach(t => {
+      const urls = Array.isArray(t.url) ? t.url : [t.url];
+      this.load.audio(t.id, urls);
+    });
 
-    // --- Preload all character sprites ---
+    // --- Characters ---
     CHARACTERS.forEach(c => {
       if (!this.textures.exists(c.id)) this.load.image(c.id, c.url);
     });
 
-    // Optional: surface any asset issues in the console
+    // --- Bonus star (for +1000 drops) ---
+    if (!this.textures.exists('star')) this.load.image('star', 'assets/star.png');
+
+    // Surface any asset issues (super helpful for filename/path mismatches)
     this.load.on('loaderror', file => {
-      // key + src are super handy when a filename/path is off
-      // (e.g., spaces or punctuation mismatches)
       // eslint-disable-next-line no-console
       console.warn('[Boot] Load error:', file?.key, file?.src);
     });
   }
 
   create(){
-    // Generate tiny fallback textures used in-game
+    // Tiny fallback textures used in-game
     const g = this.add.graphics();
 
-    // Placeholder "runner" (unused if you pick a character sprite)
+    // Placeholder runner
     g.fillStyle(0x66ff99, 1); g.fillRect(0, 0, 16, 16);
-    g.fillStyle(0x003322, 1); g.fillRect(4, 5, 2, 2); g.fillRect(10, 5, 2, 2); g.fillRect(6, 10, 4, 2);
+    g.fillStyle(0x003322, 1);
+    g.fillRect(4, 5, 2, 2); g.fillRect(10, 5, 2, 2); g.fillRect(6, 10, 4, 2);
     g.generateTexture('runner', 16, 16); g.clear();
 
     // Obstacle block
