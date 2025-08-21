@@ -237,18 +237,38 @@ export default class PlayScene extends Phaser.Scene {
       const yStart = this.spawnY;
       const yStop  = this.stopY;
 
-      const texKey = this.textures.exists('star') ? 'star' : 'ob';
-      const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
-      if (texKey === 'star') star.setDisplaySize(64,64); else star.setScale(2);
+// --- create the star ---
+const texKey = this.textures.exists('star') ? 'star' : 'ob';
+const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
+if (texKey === 'star') star.setDisplaySize(64, 64); else star.setScale(2);
 
-      const label = this.add.text(x, yStart - 2, letter.toUpperCase(), {
-        fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#111111'
-      }).setOrigin(0.5,1);
+// --- bold letter on top of the star ---
+const label = this.add.text(x, yStart, letter.toUpperCase(), {
+  fontFamily: '"Press Start 2P"',
+  fontSize: '20px',        // bigger so it reads at a glance
+  color: '#ffffff'         // white text
+}).setOrigin(0.5).setDepth(1000);
 
-      this.bonusGroup.addMultiple([star, label]);
-      this.bonusStars.push({ sprite: star, label, letter, col });
+// add black outline & soft shadow for contrast on yellow
+label.setStroke('#000000', 6);
+label.setShadow(0, 2, '#000000', 4, true, true);
 
-      const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
+// track + tween both together
+this.bonusGroup.addMultiple([star, label]);
+this.bonusStars.push({ sprite: star, label, letter, col });
+
+const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
+this.tweens.add({
+  targets: [star, label],
+  y: yStop,
+  duration: dur,
+  ease: 'Linear',
+  onComplete: () => {
+    if (star.active) { star.destroy(); label.destroy(); }
+    this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
+    if (this.bonusStars.length === 0) this.bonusActive = false;
+  }
+});
 
       this.tweens.add({
         targets: [star, label],
