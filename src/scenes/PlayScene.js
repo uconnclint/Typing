@@ -7,9 +7,8 @@ export default class PlayScene extends Phaser.Scene {
   constructor(){ super('play'); }
 
   preload(){
-    // Fallback if a character texture wasn't preloaded
-    if (!this.textures.exists('boy')) this.load.image('boy', 'assets/boy.png');
-    // Optional star preload (ok if already loaded in Boot)
+    // Fallback assets (in case Boot didn't)
+    if (!this.textures.exists('boy'))  this.load.image('boy',  'assets/boy.png');
     if (!this.textures.exists('star')) this.load.image('star', 'assets/star.png');
   }
 
@@ -38,7 +37,9 @@ export default class PlayScene extends Phaser.Scene {
     this.timeText  = this.add.text(20,  20, 'TIME 0.0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
     this.letText   = this.add.text(250, 20, 'LETTERS 0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
     this.scoreText = this.add.text(540, 20, 'SCORE 0', {fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#cfe4ff'});
-    this.add.text(width/2, 92, 'TYPE THE GREEN LETTER', { fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff' }).setOrigin(0.5);
+    this.add.text(width/2, 92, 'TYPE THE GREEN LETTER', {
+      fontFamily:'"Press Start 2P"', fontSize:'14px', color:'#9bd0ff'
+    }).setOrigin(0.5);
 
     // 🔊/🔇 mute
     this.muteText = this.add.text(width-60, 20, (localStorage.getItem('kr_muted')==='1')?'🔇':'🔊', {fontSize:'28px'})
@@ -139,7 +140,7 @@ export default class PlayScene extends Phaser.Scene {
           this.countText.destroy();
           this.ready = true;
           this._nextWave();
-          this._scheduleBonus(); // start once game begins
+          this._scheduleBonus(); // start bonus timer once game begins
         }
       }
     });
@@ -226,49 +227,45 @@ export default class PlayScene extends Phaser.Scene {
     });
   }
 
-// REPLACE your entire _spawnBonus() with this
-_spawnBonus(){
-  if (!this.ready || this.gameOver || this.paused) return;
-  if (this.bonusActive) return;
-  this.bonusActive = true;
+  _spawnBonus(){
+    if (!this.ready || this.gameOver || this.paused) return;
+    if (this.bonusActive) return;
+    this.bonusActive = true;
 
-  [0,1,2].forEach(col => {
-    const letter = Phaser.Utils.Array.GetRandom(this.pool);
-    const x = this.colsX[col];
-    const yStart = this.spawnY;
-    const yStop  = this.stopY;
+    [0,1,2].forEach(col => {
+      const letter = Phaser.Utils.Array.GetRandom(this.pool);
+      const x = this.colsX[col];
+      const yStart = this.spawnY;
+      const yStop  = this.stopY;
 
-    // star sprite
-    const texKey = this.textures.exists('star') ? 'star' : 'ob';
-    const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
-    if (texKey === 'star') star.setDisplaySize(64, 64); else star.setScale(2);
+      // star sprite
+      const texKey = this.textures.exists('star') ? 'star' : 'ob';
+      const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
+      if (texKey === 'star') star.setDisplaySize(64, 64); else star.setScale(2);
 
-    // label matches lane letters
-    const label = this.add.text(x, yStart, letter.toUpperCase(), {
-      fontFamily: '"Press Start 2P"', fontSize: '20px', color: '#ffffff'
-    }).setOrigin(0.5).setResolution(2);
+      // label matches lane letters
+      const label = this.add.text(x, yStart, letter.toUpperCase(), {
+        fontFamily: '"Press Start 2P"', fontSize: '20px', color: '#ffffff'
+      }).setOrigin(0.5).setResolution(2);
 
-    this.bonusGroup.addMultiple([star, label]);
-    this.bonusStars.push({ sprite: star, label, letter, col });
+      this.bonusGroup.addMultiple([star, label]);
+      this.bonusStars.push({ sprite: star, label, letter, col });
 
-    const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
+      const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
 
-    this.tweens.add({
-      targets: [star, label],
-      y: yStop,
-      duration: dur,
-      ease: 'Linear',
-      onComplete: () => {
-        if (star.active) { star.destroy(); label.destroy(); }
-        this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
-        if (this.bonusStars.length === 0) this.bonusActive = false;
-      }
+      this.tweens.add({
+        targets: [star, label],
+        y: yStop,
+        duration: dur,
+        ease: 'Linear',
+        onComplete: () => {
+          if (star.active) { star.destroy(); label.destroy(); }
+          this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
+          if (this.bonusStars.length === 0) this.bonusActive = false;
+        }
+      });
     });
-  });
-}
-
-const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
-
+  }
 
   _tryConsumeBonus(k){
     const idx = this.bonusStars.findIndex(s => s.letter.toLowerCase() === k.toLowerCase() && s.sprite.active);
