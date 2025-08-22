@@ -226,6 +226,7 @@ export default class PlayScene extends Phaser.Scene {
     });
   }
 
+// REPLACE your entire _spawnBonus() with this
 _spawnBonus(){
   if (!this.ready || this.gameOver || this.paused) return;
   if (this.bonusActive) return;
@@ -267,31 +268,7 @@ _spawnBonus(){
 }
 
 const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
-this.tweens.add({
-  targets: [star, label],
-  y: yStop,
-  duration: dur,
-  ease: 'Linear',
-  onComplete: () => {
-    if (star.active) { star.destroy(); label.destroy(); }
-    this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
-    if (this.bonusStars.length === 0) this.bonusActive = false;
-  }
-});
 
-      this.tweens.add({
-        targets: [star, label],
-        y: yStop,
-        duration: dur,
-        ease: 'Linear',
-        onComplete: () => {
-          if (star.active) { star.destroy(); label.destroy(); }
-          this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
-          if (this.bonusStars.length === 0) this.bonusActive = false;
-        }
-      });
-    });
-  }
 
   _tryConsumeBonus(k){
     const idx = this.bonusStars.findIndex(s => s.letter.toLowerCase() === k.toLowerCase() && s.sprite.active);
