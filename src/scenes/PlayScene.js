@@ -226,61 +226,45 @@ export default class PlayScene extends Phaser.Scene {
     });
   }
 
-  _spawnBonus(){
-    if (!this.ready || this.gameOver || this.paused) return;
-    if (this.bonusActive) return;
-    this.bonusActive = true;
+_spawnBonus(){
+  if (!this.ready || this.gameOver || this.paused) return;
+  if (this.bonusActive) return;
+  this.bonusActive = true;
 
-    [0,1,2].forEach(col => {
-      const letter = Phaser.Utils.Array.GetRandom(this.pool);
-      const x = this.colsX[col];
-      const yStart = this.spawnY;
-      const yStop  = this.stopY;
+  [0,1,2].forEach(col => {
+    const letter = Phaser.Utils.Array.GetRandom(this.pool);
+    const x = this.colsX[col];
+    const yStart = this.spawnY;
+    const yStop  = this.stopY;
 
-// --- create the star ---
-const texKey = this.textures.exists('star') ? 'star' : 'ob';
-const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
-if (texKey === 'star') star.setDisplaySize(64, 64); else star.setScale(2);
+    // star sprite
+    const texKey = this.textures.exists('star') ? 'star' : 'ob';
+    const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
+    if (texKey === 'star') star.setDisplaySize(64, 64); else star.setScale(2);
 
-// --- label that MATCHES the lane letters (font/size/color/origin) ---
-const starLabelStyle = {
-  fontFamily: '"Press Start 2P"',
-  fontSize: '20px',     // same as lane labels
-  color: '#ffffff'      // lane labels start white, then get tinted green/red
-};
-const label = this.add.text(x, yStart, letter.toUpperCase(), starLabelStyle)
-  .setOrigin(0.5)
-  .setResolution(2);    // crisp + avoids top clipping
+    // label matches lane letters
+    const label = this.add.text(x, yStart, letter.toUpperCase(), {
+      fontFamily: '"Press Start 2P"', fontSize: '20px', color: '#ffffff'
+    }).setOrigin(0.5).setResolution(2);
 
-// (No stroke/shadow so it looks identical to the top letters)
-this.bonusGroup.addMultiple([star, label]);
-this.bonusStars.push({ sprite: star, label, letter, col });
+    this.bonusGroup.addMultiple([star, label]);
+    this.bonusStars.push({ sprite: star, label, letter, col });
 
-const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
-this.tweens.add({
-  targets: [star, label],
-  y: yStop,
-  duration: dur,
-  ease: 'Linear',
-  onComplete: () => {
-    if (star.active) { star.destroy(); label.destroy(); }
-    this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
-    if (this.bonusStars.length === 0) this.bonusActive = false;
-  }
-});
+    const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
 
-const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
-this.tweens.add({
-  targets: [star, label],
-  y: yStop,
-  duration: dur,
-  ease: 'Linear',
-  onComplete: () => {
-    if (star.active) { star.destroy(); label.destroy(); }
-    this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
-    if (this.bonusStars.length === 0) this.bonusActive = false;
-  }
-});
+    this.tweens.add({
+      targets: [star, label],
+      y: yStop,
+      duration: dur,
+      ease: 'Linear',
+      onComplete: () => {
+        if (star.active) { star.destroy(); label.destroy(); }
+        this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
+        if (this.bonusStars.length === 0) this.bonusActive = false;
+      }
+    });
+  });
+}
 
 const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
 this.tweens.add({
