@@ -282,6 +282,19 @@ this.tweens.add({
   }
 });
 
+const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
+this.tweens.add({
+  targets: [star, label],
+  y: yStop,
+  duration: dur,
+  ease: 'Linear',
+  onComplete: () => {
+    if (star.active) { star.destroy(); label.destroy(); }
+    this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
+    if (this.bonusStars.length === 0) this.bonusActive = false;
+  }
+});
+
       this.tweens.add({
         targets: [star, label],
         y: yStop,
