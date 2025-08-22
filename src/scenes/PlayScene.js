@@ -242,20 +242,32 @@ const texKey = this.textures.exists('star') ? 'star' : 'ob';
 const star = this.add.image(x, yStart, texKey).setOrigin(0.5);
 if (texKey === 'star') star.setDisplaySize(64, 64); else star.setScale(2);
 
-// --- bold letter on top of the star ---
-const label = this.add.text(x, yStart, letter.toUpperCase(), {
+// --- label that MATCHES the lane letters (font/size/color/origin) ---
+const starLabelStyle = {
   fontFamily: '"Press Start 2P"',
-  fontSize: '20px',        // bigger so it reads at a glance
-  color: '#ffffff'         // white text
-}).setOrigin(0.5).setDepth(1000);
+  fontSize: '20px',     // same as lane labels
+  color: '#ffffff'      // lane labels start white, then get tinted green/red
+};
+const label = this.add.text(x, yStart, letter.toUpperCase(), starLabelStyle)
+  .setOrigin(0.5)
+  .setResolution(2);    // crisp + avoids top clipping
 
-// add black outline & soft shadow for contrast on yellow
-label.setStroke('#000000', 6);
-label.setShadow(0, 2, '#000000', 4, true, true);
-
-// track + tween both together
+// (No stroke/shadow so it looks identical to the top letters)
 this.bonusGroup.addMultiple([star, label]);
 this.bonusStars.push({ sprite: star, label, letter, col });
+
+const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
+this.tweens.add({
+  targets: [star, label],
+  y: yStop,
+  duration: dur,
+  ease: 'Linear',
+  onComplete: () => {
+    if (star.active) { star.destroy(); label.destroy(); }
+    this.bonusStars = this.bonusStars.filter(s => s.sprite.active);
+    if (this.bonusStars.length === 0) this.bonusActive = false;
+  }
+});
 
 const dur = ((yStop - yStart) / this.dropSpeed) * 1000;
 this.tweens.add({
